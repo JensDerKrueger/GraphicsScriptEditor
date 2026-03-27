@@ -1,0 +1,94 @@
+import Foundation
+
+struct DSLCommandSet {
+    private struct BlockCommandDefinition {
+        let openingCommands: Set<String>
+        let closingCommands: Set<String>
+    }
+
+    private struct CommandDefinition {
+        let name: String
+        let signatures: [[ArgType]]
+    }
+
+    static let builtInCommands: Set<String> = [
+        "noop",
+        "set",
+        "unset",
+        "repeat",
+        "endrepeat",
+        "if",
+        "as",
+        "else",
+        "endif"
+    ]
+
+    private static let definitions: [CommandDefinition] = [
+        CommandDefinition(name: "reset", signatures: [[]]),
+        CommandDefinition(name: "prefilter", signatures: [[]]),
+
+        CommandDefinition(name: "setinteraction", signatures: [[.bool]]),
+        CommandDefinition(name: "setbackground", signatures: [[.float, .float, .float, .float]]),
+        CommandDefinition(name: "resize", signatures: [[.int, .int]]),
+        CommandDefinition(name: "screenshot", signatures: [[], [.string]]),
+        CommandDefinition(name: "setfpswindow", signatures: [[.float]]),
+        CommandDefinition(name: "clearlog", signatures: [[]]),
+        CommandDefinition(name: "logfile", signatures: [[.string]]),
+
+        CommandDefinition(name: "logtime", signatures: [[]]),
+        CommandDefinition(name: "logfps", signatures: [[]]),
+        CommandDefinition(name: "logGLInfo", signatures: [[.bool]]),
+        CommandDefinition(name: "log", signatures: [[.restString]]),
+        CommandDefinition(name: "setdir", signatures: [[.string]]),
+        CommandDefinition(name: "quit", signatures: [[]]),
+
+        CommandDefinition(name: "constantSampleCount", signatures: [[.bool]]),
+        CommandDefinition(name: "setrate", signatures: [[.float]]),
+        CommandDefinition(name: "setsubdiv", signatures: [[.uint32]]),
+        CommandDefinition(name: "setuseortho", signatures: [[.bool]]),
+        CommandDefinition(name: "setusennfilter", signatures: [[.bool]]),
+        CommandDefinition(name: "setmethod", signatures: [[.uint32]]),
+        CommandDefinition(name: "setvolume", signatures: [[.uint32]]),
+        CommandDefinition(name: "settffile", signatures: [[.string]]),
+        CommandDefinition(name: "settfcode", signatures: [[.string]]),
+        CommandDefinition(name: "settfparams", signatures: [[.bool, .float, .float]]),
+        CommandDefinition(name: "resetrotation", signatures: [[]]),
+        CommandDefinition(name: "setLevel", signatures: [[.uint32]]),
+        CommandDefinition(name: "setrotation", signatures: [Array(repeating: .float, count: 16)]),
+        CommandDefinition(name: "addrotationx", signatures: [[.float]]),
+        CommandDefinition(name: "addrotationy", signatures: [[.float]]),
+        CommandDefinition(name: "addrotationz", signatures: [[.float]]),
+        CommandDefinition(name: "settranslation", signatures: [[.float, .float, .float]]),
+        CommandDefinition(name: "settransformparams", signatures: [[.string]]),
+        CommandDefinition(name: "setalphathreshold", signatures: [[.float]])
+    ]
+
+    private static let blockCommands = BlockCommandDefinition(
+        openingCommands: ["repeat", "if", "else"],
+        closingCommands: ["endrepeat", "endif", "else"]
+    )
+
+    static func registerAll(in interpreter: CommandInterpreter) {
+        for def in definitions {
+            for signature in def.signatures {
+                interpreter.registerCommand(def.name, signature)
+            }
+        }
+    }
+
+    static var commandNames: Set<String> {
+        var names = builtInCommands
+        for def in definitions {
+            names.insert(def.name)
+        }
+        return names
+    }
+
+    static var blockOpeningCommands: Set<String> {
+        blockCommands.openingCommands
+    }
+
+    static var blockClosingCommands: Set<String> {
+        blockCommands.closingCommands
+    }
+}
