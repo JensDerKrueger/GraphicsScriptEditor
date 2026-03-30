@@ -86,11 +86,15 @@ struct ContentView: View {
         .onReceive(model.$currentFileURL) { currentFileURL in
             filePath = currentFileURL?.path ?? ""
         }
+        .onReceive(NotificationCenter.default.publisher(for: ExternalFileOpenStore.didReceiveFilesNotification)) { _ in
+            handleExternalFileOpenRequest()
+        }
         .onChange(of: editorErrorCheckingEnabled) { isEnabled in
             model.setErrorCheckingEnabled(isEnabled)
         }
         .task {
             restoreOpenTabsIfNeeded()
+            handleExternalFileOpenRequest()
             model.setErrorCheckingEnabled(editorErrorCheckingEnabled)
         }
         .background(WindowConfigurationView(model: model, windowID: windowID))
@@ -105,6 +109,24 @@ struct ContentView: View {
         }
 
         for filePath in restorePaths.dropFirst() {
+            openWindow(value: filePath)
+        }
+    }
+
+    private func handleExternalFileOpenRequest() {
+        let paths = ExternalFileOpenStore.shared.consumePendingPaths()
+        guard !paths.isEmpty else { return }
+
+        if model.currentFileURL == nil && !model.hasUnsavedChanges {
+            model.openFile(at: URL(fileURLWithPath: paths[0]))
+
+            for filePath in paths.dropFirst() {
+                openWindow(value: filePath)
+            }
+            return
+        }
+
+        for filePath in paths {
             openWindow(value: filePath)
         }
     }

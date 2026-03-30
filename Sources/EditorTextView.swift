@@ -621,16 +621,83 @@ struct EditorTextView: NSViewRepresentable {
             let selectedRange = textView.selectedRange()
             let nsString = textStorage.string as NSString
             let lineRange = nsString.lineRange(for: NSRange(location: selectedRange.location, length: 0))
-            let lineText = nsString.substring(with: lineRange)
-            let currentIndentation = Self.leadingWhitespace(in: lineText)
-            let adjustedText = adjustedPastedText(pasteboardString, currentIndentation: currentIndentation)
-
-            guard adjustedText != pasteboardString else {
+            let textBeforeCursor = nsString.substring(
+                with: NSRange(
+                    location: lineRange.location,
+                    length: max(0, selectedRange.location - lineRange.location)
+                )
+            )
+            let onlyWhitespaceBeforeCursor = textBeforeCursor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let baseIndentationLevel = indentationLevel(before: selectedRange.location, in: nsString)
+            let normalizedText = pasteboardString.replacingOccurrences(of: "\r\n", with: "\n")
+            let lines = normalizedText.components(separatedBy: "\n")
+            guard lines.count > 1 else {
                 return false
             }
 
             isUpdating = true
-            textView.insertText(adjustedText, replacementRange: selectedRange)
+            var insertionRange = selectedRange
+            var runningIndentationLevel = max(0, baseIndentationLevel)
+
+            for (index, line) in lines.enumerated() {
+                let trimmedLine = line.replacingOccurrences(
+                    of: #"^[ \t]+"#,
+                    with: "",
+                    options: .regularExpression
+                )
+
+                let insertion: String
+                if index == 0 {
+                    if onlyWhitespaceBeforeCursor {
+                        insertionRange = NSRange(
+                            location: lineRange.location,
+                            length: selectedRange.length + max(0, selectedRange.location - lineRange.location)
+                        )
+                    }
+
+                    if trimmedLine.isEmpty {
+                        insertion = onlyWhitespaceBeforeCursor ? textBeforeCursor : line
+                    } else {
+                        let firstLineContent = onlyWhitespaceBeforeCursor ? trimmedLine : line
+                        let command = Self.commandForIndentation(in: firstLineContent)
+
+                        if onlyWhitespaceBeforeCursor {
+                            let indentationLevelForLine = expectedIndentationLevel(
+                                for: command,
+                                baseLevel: runningIndentationLevel
+                            )
+                            insertion = indentationString(for: indentationLevelForLine) + trimmedLine
+                        } else {
+                            insertion = line
+                        }
+
+                        runningIndentationLevel = nextIndentationLevel(
+                            for: command,
+                            baseLevel: runningIndentationLevel
+                        )
+                    }
+                } else if trimmedLine.isEmpty {
+                    insertion = "\n"
+                } else {
+                    let command = Self.commandForIndentation(in: trimmedLine)
+                    let indentationLevelForLine = expectedIndentationLevel(
+                        for: command,
+                        baseLevel: runningIndentationLevel
+                    )
+                    insertion = "\n" + indentationString(for: indentationLevelForLine) + trimmedLine
+                    runningIndentationLevel = nextIndentationLevel(
+                        for: command,
+                        baseLevel: runningIndentationLevel
+                    )
+                }
+
+                textView.insertText(insertion, replacementRange: insertionRange)
+                insertionRange = NSRange(
+                    location: insertionRange.location + (insertion as NSString).length,
+                    length: 0
+                )
+            }
+
             syncParentText(from: textView)
             return true
         }
@@ -713,32 +780,6 @@ struct EditorTextView: NSViewRepresentable {
 
             let leadingSpaces = line.prefix { $0 == " " }.count
             return min(leadingSpaces, max(1, parent.indentationUnit.count))
-        }
-
-        private func adjustedPastedText(_ text: String, currentIndentation: String) -> String {
-            let normalizedText = text.replacingOccurrences(of: "\r\n", with: "\n")
-            let lines = normalizedText.components(separatedBy: "\n")
-            guard lines.count > 1 else {
-                return text
-            }
-
-            let nonEmptyLines = lines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            let commonIndentationLength = nonEmptyLines
-                .map { Self.leadingWhitespace(in: $0).count }
-                .min() ?? 0
-
-            let normalizedLines = lines.enumerated().map { index, line in
-                let trimmedLine = String(line.dropFirst(min(commonIndentationLength, Self.leadingWhitespace(in: line).count)))
-                if index == 0 {
-                    return trimmedLine
-                }
-                if trimmedLine.isEmpty {
-                    return currentIndentation
-                }
-                return currentIndentation + trimmedLine
-            }
-
-            return normalizedLines.joined(separator: "\n")
         }
 
         private func syncParentText(from textView: NSTextView) {

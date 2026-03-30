@@ -1,5 +1,40 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
+
+enum GraphicsScriptFileType {
+    static let typeIdentifier = "de.cgvis.graphicsscript"
+    static let filenameExtension = "gsc"
+    static let contentType = UTType(exportedAs: typeIdentifier)
+}
+
+@MainActor
+final class ExternalFileOpenStore {
+    static let shared = ExternalFileOpenStore()
+
+    static let didReceiveFilesNotification = Notification.Name("ExternalFileOpenStoreDidReceiveFiles")
+
+    private var pendingPaths: [String] = []
+
+    func enqueue(urls: [URL]) {
+        let paths = urls
+            .filter { $0.isFileURL }
+            .map(\.path)
+
+        guard !paths.isEmpty else {
+            return
+        }
+
+        pendingPaths.append(contentsOf: paths)
+        NotificationCenter.default.post(name: Self.didReceiveFilesNotification, object: nil)
+    }
+
+    func consumePendingPaths() -> [String] {
+        let paths = pendingPaths
+        pendingPaths.removeAll()
+        return paths
+    }
+}
 
 enum AppIconLoader {
     static func apply() {
@@ -152,6 +187,10 @@ final class GraphicsScriptEditorAppDelegate: NSObject, NSApplicationDelegate {
         OpenTabsStore.shared.beginTermination()
         OpenTabsStore.shared.persistCurrentTabs()
         return .terminateNow
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        ExternalFileOpenStore.shared.enqueue(urls: urls)
     }
 }
 

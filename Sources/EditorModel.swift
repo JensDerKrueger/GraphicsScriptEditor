@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 final class EditorModel: ObservableObject {
     @Published var text: String = "" {
@@ -100,6 +101,10 @@ final class EditorModel: ObservableObject {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: GraphicsScriptFileType.filenameExtension) ?? GraphicsScriptFileType.contentType,
+            .plainText
+        ]
         panel.title = "Open Script"
         panel.prompt = "Open"
 
@@ -137,7 +142,9 @@ final class EditorModel: ObservableObject {
         let panel = NSSavePanel()
         panel.title = "Save Script"
         panel.prompt = "Save"
-        panel.nameFieldStringValue = currentFileURL?.lastPathComponent ?? "script.txt"
+        panel.allowedContentTypes = [GraphicsScriptFileType.contentType]
+        panel.allowsOtherFileTypes = false
+        panel.nameFieldStringValue = currentFileURL?.lastPathComponent ?? "script.gsc"
 
         if panel.runModal() == .OK, let url = panel.url {
             currentFileURL = url
@@ -190,7 +197,9 @@ final class EditorModel: ObservableObject {
         let panel = NSSavePanel()
         panel.title = "Save Script"
         panel.prompt = "Save"
-        panel.nameFieldStringValue = "script.txt"
+        panel.allowedContentTypes = [GraphicsScriptFileType.contentType]
+        panel.allowsOtherFileTypes = false
+        panel.nameFieldStringValue = "script.gsc"
 
         if panel.runModal() == .OK, let url = panel.url {
             currentFileURL = url
