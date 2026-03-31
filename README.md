@@ -4,7 +4,7 @@ Native macOS editor for `Graphics Script` files with live validation, structure-
 
 ## Overview
 
-`Graphics Script Editor` is a dedicated script editor for `.gsc` files. It is built for the workflow of writing, checking, and running graphics scripts quickly, without forcing that work into a general-purpose text editor.
+`Graphics Script Editor` is a dedicated script editor for `.gsc` files. It is used to write scripts for the application presented in the paper *"Reassessing Quality, Performance, and Reproducibility of Higher-Order Filtering and Virtual Samples in Volume Rendering"*. The editor is built for the workflow of writing, checking, and running those graphics scripts quickly, without forcing that work into a general-purpose text editor.
 
 The app combines a native editing experience with just enough IDE behavior to be useful:
 
@@ -13,17 +13,6 @@ The app combines a native editing experience with just enough IDE behavior to be
 - smart block pasting
 - configurable appearance
 - direct runner integration
-
-## Why It Exists
-
-Graphics scripts tend to be edited in tools that understand plain text but not the structure of the language. That leads to avoidable friction:
-
-- indentation drifts out of sync
-- syntax issues are only discovered at runtime
-- running scripts requires manual command-line steps
-- opening scripts from Finder has no dedicated editing experience
-
-This project narrows the scope on purpose. It focuses on the actual authoring loop for Graphics Script files and keeps everything else out of the way.
 
 ## Features
 
