@@ -93,14 +93,19 @@ struct ContentView: View {
             model.setErrorCheckingEnabled(isEnabled)
         }
         .task {
-            restoreOpenTabsIfNeeded()
             handleExternalFileOpenRequest()
+            restoreOpenTabsIfNeeded()
             model.setErrorCheckingEnabled(editorErrorCheckingEnabled)
         }
         .background(WindowConfigurationView(model: model, windowID: windowID))
     }
 
     private func restoreOpenTabsIfNeeded() {
+        guard !ExternalFileOpenStore.shared.hasPendingPaths else {
+            OpenTabsStore.shared.skipRestore()
+            return
+        }
+
         let restorePaths = OpenTabsStore.shared.consumeRestorePaths(isEnabled: restoreOpenTabsOnLaunch)
         guard !restorePaths.isEmpty else { return }
 
@@ -114,19 +119,32 @@ struct ContentView: View {
     }
 
     private func handleExternalFileOpenRequest() {
-        let paths = ExternalFileOpenStore.shared.consumePendingPaths()
+        let paths = Array(NSOrderedSet(array: ExternalFileOpenStore.shared.consumePendingPaths())) as? [String] ?? []
         guard !paths.isEmpty else { return }
 
-        if model.currentFileURL == nil && !model.hasUnsavedChanges {
-            model.openFile(at: URL(fileURLWithPath: paths[0]))
+        var unopenedPaths: [String] = []
 
-            for filePath in paths.dropFirst() {
+        for filePath in paths {
+            if OpenTabsStore.shared.activateWindow(for: filePath) {
+                continue
+            }
+            unopenedPaths.append(filePath)
+        }
+
+        guard !unopenedPaths.isEmpty else {
+            return
+        }
+
+        if model.currentFileURL == nil && !model.hasUnsavedChanges {
+            model.openFile(at: URL(fileURLWithPath: unopenedPaths[0]))
+
+            for filePath in unopenedPaths.dropFirst() {
                 openWindow(value: filePath)
             }
             return
         }
 
-        for filePath in paths {
+        for filePath in unopenedPaths {
             openWindow(value: filePath)
         }
     }
@@ -302,7 +320,7 @@ struct WindowConfigurationView: NSViewRepresentable {
             window.isDocumentEdited = model.hasUnsavedChanges
             window.title = model.documentTitle
             window.representedURL = model.currentFileURL
-            OpenTabsStore.shared.update(windowID: windowID, filePath: model.currentFileURL?.path)
+            OpenTabsStore.shared.update(windowID: windowID, filePath: model.currentFileURL?.path, window: window)
             OpenTabsStore.shared.registerRestoredWindow(window, filePath: model.currentFileURL?.path)
         }
 

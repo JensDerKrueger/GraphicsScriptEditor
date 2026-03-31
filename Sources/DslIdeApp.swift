@@ -34,6 +34,10 @@ final class ExternalFileOpenStore {
         pendingPaths.removeAll()
         return paths
     }
+
+    var hasPendingPaths: Bool {
+        !pendingPaths.isEmpty
+    }
 }
 
 enum AppIconLoader {
@@ -69,7 +73,16 @@ final class OpenTabsStore {
 
     private static let defaultsKey = "openGraphicsScriptTabs"
 
+    private final class WeakWindowBox {
+        weak var window: NSWindow?
+
+        init(window: NSWindow) {
+            self.window = window
+        }
+    }
+
     private var openTabsByWindowID: [String: String] = [:]
+    private var windowsByWindowID: [String: WeakWindowBox] = [:]
     private var restoreAttempted = false
     private var isTerminating = false
     private var pendingRestoreTabPaths: Set<String> = []
@@ -80,7 +93,13 @@ final class OpenTabsStore {
         return paths.filter { !$0.isEmpty }
     }
 
-    func update(windowID: String, filePath: String?) {
+    func update(windowID: String, filePath: String?, window: NSWindow?) {
+        if let window {
+            windowsByWindowID[windowID] = WeakWindowBox(window: window)
+        } else {
+            windowsByWindowID.removeValue(forKey: windowID)
+        }
+
         if !restoreAttempted, (filePath == nil || filePath?.isEmpty == true) {
             return
         }
@@ -98,6 +117,7 @@ final class OpenTabsStore {
             return
         }
         openTabsByWindowID.removeValue(forKey: windowID)
+        windowsByWindowID.removeValue(forKey: windowID)
         persistCurrentTabs()
     }
 
@@ -115,6 +135,15 @@ final class OpenTabsStore {
         pendingRestoreTabPaths = Set(paths.dropFirst())
         primaryRestoreWindow = nil
         return paths
+    }
+
+    func skipRestore() {
+        guard !restoreAttempted else {
+            return
+        }
+        restoreAttempted = true
+        pendingRestoreTabPaths = []
+        primaryRestoreWindow = nil
     }
 
     func beginTermination() {
@@ -154,6 +183,33 @@ final class OpenTabsStore {
             primaryRestoreWindow.addTabbedWindow(window, ordered: .above)
             primaryRestoreWindow.makeKeyAndOrderFront(nil)
         }
+    }
+
+    func activateWindow(for filePath: String) -> Bool {
+        cleanupWindowRegistry()
+
+        guard let windowID = openTabsByWindowID.first(where: { $0.value == filePath })?.key,
+              let window = windowsByWindowID[windowID]?.window else {
+            return false
+        }
+
+        if let tabGroup = window.tabGroup,
+           let tab = tabGroup.windows.first(where: { $0 === window }) {
+            tabGroup.selectedWindow = tab
+        }
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        return true
+    }
+
+    private func cleanupWindowRegistry() {
+        let activeWindowIDs = windowsByWindowID.compactMap { windowID, box in
+            box.window == nil ? nil : windowID
+        }
+        let activeWindowIDSet = Set(activeWindowIDs)
+        windowsByWindowID = windowsByWindowID.filter { $0.value.window != nil }
+        openTabsByWindowID = openTabsByWindowID.filter { activeWindowIDSet.contains($0.key) }
     }
 }
 
