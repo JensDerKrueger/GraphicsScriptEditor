@@ -4,6 +4,8 @@ import AppKit
 import UniformTypeIdentifiers
 
 final class EditorModel: ObservableObject {
+    static let defaultScriptText = "# Your graphics script\nquit\n"
+
     @Published var text: String = "" {
         didSet {
             updateDirtyState()
@@ -33,13 +35,52 @@ final class EditorModel: ObservableObject {
     private var internalWriteSuppressionUntil: Date?
     private var validationGeneration = 0
 
-    init(initialFilePath: String? = nil) {
-        text = "# Your graphics script\nquit\n"
+    init(initialText: String = EditorModel.defaultScriptText, initialFileURL: URL? = nil) {
+        text = initialText
         lastSavedText = text
+        currentFileURL = initialFileURL
         validateNow()
 
-        if let initialFilePath, !initialFilePath.isEmpty {
-            openFile(at: URL(fileURLWithPath: initialFilePath))
+        if let initialFileURL {
+            refreshObservedFileState(for: initialFileURL)
+            startMonitoringCurrentFile()
+        }
+    }
+
+    func applyDocumentState(text newText: String, fileURL: URL?) {
+        let normalizedText = normalizedLoadedText(newText)
+        text = normalizedText
+        currentFileURL = fileURL
+        lastSavedText = normalizedText
+        hasUnsavedChanges = false
+        validateNow()
+
+        if let fileURL {
+            RecentFilesStore.register(url: fileURL)
+            refreshObservedFileState(for: fileURL)
+            startMonitoringCurrentFile()
+        } else {
+            fileMonitorTimer?.invalidate()
+            lastKnownFileModificationDate = nil
+            ignoredExternalModificationDate = nil
+        }
+    }
+
+    func updateDocumentFileURL(_ fileURL: URL?) {
+        guard currentFileURL != fileURL else {
+            return
+        }
+
+        currentFileURL = fileURL
+
+        if let fileURL {
+            RecentFilesStore.register(url: fileURL)
+            refreshObservedFileState(for: fileURL)
+            startMonitoringCurrentFile()
+        } else {
+            fileMonitorTimer?.invalidate()
+            lastKnownFileModificationDate = nil
+            ignoredExternalModificationDate = nil
         }
     }
 
@@ -189,29 +230,31 @@ final class EditorModel: ObservableObject {
 
     }
 
+    func prepareForDocumentSaveAttempt() {
+        suppressExternalChangeDetection()
+    }
+
+    func finalizeDocumentSave(fileURL: URL?) {
+        lastSavedText = text
+        hasUnsavedChanges = false
+
+        if let fileURL {
+            currentFileURL = fileURL
+            RecentFilesStore.register(url: fileURL)
+            refreshObservedFileState(for: fileURL)
+            startMonitoringCurrentFile()
+            statusMessage = "Saved \(fileURL.lastPathComponent)"
+        } else {
+            statusMessage = "Saved"
+        }
+    }
+
     private func ensureSavedForRun() -> URL? {
-        if let url = currentFileURL {
-            return writeFile(url) ? url : nil
+        if let url = currentFileURL, !hasUnsavedChanges {
+            return url
         }
 
-        let panel = NSSavePanel()
-        panel.title = "Save Script"
-        panel.prompt = "Save"
-        panel.allowedContentTypes = [GraphicsScriptFileType.contentType]
-        panel.allowsOtherFileTypes = false
-        panel.nameFieldStringValue = "script.gsc"
-
-        if panel.runModal() == .OK, let url = panel.url {
-            currentFileURL = url
-            let didWrite = writeFile(url)
-            if didWrite {
-                refreshObservedFileState(for: url)
-                startMonitoringCurrentFile()
-            }
-            return didWrite ? url : nil
-        }
-
-        return nil
+        return createTemporaryRunFile()
     }
 
     @discardableResult
@@ -351,6 +394,32 @@ final class EditorModel: ObservableObject {
 
     private func suppressExternalChangeDetection() {
         internalWriteSuppressionUntil = Date().addingTimeInterval(2.0)
+    }
+
+    private func createTemporaryRunFile() -> URL? {
+        let temporaryDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GraphicsScriptEditorRuns", isDirectory: true)
+
+        do {
+            try FileManager.default.createDirectory(
+                at: temporaryDirectoryURL,
+                withIntermediateDirectories: true
+            )
+
+            let baseName = currentFileURL?.deletingPathExtension().lastPathComponent ?? "script"
+            let temporaryFileURL = temporaryDirectoryURL
+                .appendingPathComponent("\(baseName)-\(UUID().uuidString)")
+                .appendingPathExtension(GraphicsScriptFileType.filenameExtension)
+
+            try text.write(to: temporaryFileURL, atomically: true, encoding: .utf8)
+            statusMessage = currentFileURL == nil
+                ? "Running unsaved script"
+                : "Running unsaved changes from temporary copy"
+            return temporaryFileURL
+        } catch {
+            statusMessage = "Failed to prepare script for run: \(error.localizedDescription)"
+            return nil
+        }
     }
 
     private var isErrorCheckingEnabled: Bool {

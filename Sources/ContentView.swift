@@ -1,14 +1,13 @@
 import SwiftUI
+import AppKit
 
 struct ContentView: View {
-    @Binding private var filePath: String
+    @Binding private var document: GraphicsScriptDocument
     @StateObject private var model: EditorModel
-    @State private var windowID = UUID().uuidString
     @AppStorage(SettingsKeys.editorFontName) private var editorFontName: String = "Menlo"
     @AppStorage(SettingsKeys.editorFontSize) private var editorFontSize: Double = 13
     @AppStorage(SettingsKeys.showLineNumbers) private var showLineNumbers = true
     @AppStorage(SettingsKeys.editorIndentationStyle) private var editorIndentationStyleRawValue = EditorIndentationStyle.fourSpaces.rawValue
-    @AppStorage(SettingsKeys.restoreOpenTabsOnLaunch) private var restoreOpenTabsOnLaunch = true
     @AppStorage(SettingsKeys.editorErrorCheckingEnabled) private var editorErrorCheckingEnabled = true
     @AppStorage(SettingsKeys.editorBaseColor) private var editorBaseColorHex: String = ""
     @AppStorage(SettingsKeys.editorKeywordColor) private var editorKeywordColorHex: String = ""
@@ -16,30 +15,30 @@ struct ContentView: View {
     @AppStorage(SettingsKeys.editorVariableColor) private var editorVariableColorHex: String = ""
     @AppStorage(SettingsKeys.editorCommentColor) private var editorCommentColorHex: String = ""
     @AppStorage(SettingsKeys.editorErrorUnderlineColor) private var editorErrorUnderlineColorHex: String = ""
+    @Environment(\.documentConfiguration) private var documentConfiguration
 
-    init(filePath: Binding<String>) {
-        _filePath = filePath
+    init(document: Binding<GraphicsScriptDocument>, fileURL: URL?) {
+        _document = document
         _model = StateObject(
             wrappedValue: EditorModel(
-                initialFilePath: filePath.wrappedValue.isEmpty ? nil : filePath.wrappedValue
+                initialText: document.wrappedValue.text,
+                initialFileURL: fileURL
             )
         )
     }
-
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Button {
-                    model.loadFile()
+                    openDocument()
                 } label: {
                     toolbarButtonLabel("Open", systemImage: "folder")
                 }
                 .buttonStyle(.bordered)
 
                 Button {
-                    model.saveFile()
+                    saveDocument()
                 } label: {
                     toolbarButtonLabel("Save", systemImage: "square.and.arrow.down")
                 }
@@ -83,74 +82,42 @@ struct ContentView: View {
         .frame(minWidth: 900, minHeight: 640)
         .navigationTitle(model.documentTitle)
         .focusedSceneObject(model)
-        .onReceive(model.$currentFileURL) { currentFileURL in
-            filePath = currentFileURL?.path ?? ""
-        }
-        .onReceive(NotificationCenter.default.publisher(for: ExternalFileOpenStore.didReceiveFilesNotification)) { _ in
-            handleExternalFileOpenRequest()
-        }
-        .onChange(of: editorErrorCheckingEnabled) { isEnabled in
+        .onChange(of: editorErrorCheckingEnabled) { _, isEnabled in
             model.setErrorCheckingEnabled(isEnabled)
         }
+        .onChange(of: document.text) { _, newText in
+            guard model.text != newText else {
+                return
+            }
+
+            model.applyDocumentState(text: newText, fileURL: documentConfiguration?.fileURL)
+        }
+        .onChange(of: model.text) { _, newText in
+            guard document.text != newText else {
+                return
+            }
+
+            document.text = newText
+        }
+        .onChange(of: documentConfiguration?.fileURL) { _, newFileURL in
+            model.updateDocumentFileURL(newFileURL)
+        }
         .task {
-            handleExternalFileOpenRequest()
-            restoreOpenTabsIfNeeded()
             model.setErrorCheckingEnabled(editorErrorCheckingEnabled)
-        }
-        .background(WindowConfigurationView(model: model, windowID: windowID))
-    }
-
-    private func restoreOpenTabsIfNeeded() {
-        guard !ExternalFileOpenStore.shared.hasPendingPaths else {
-            OpenTabsStore.shared.skipRestore()
-            return
-        }
-
-        let restorePaths = OpenTabsStore.shared.consumeRestorePaths(isEnabled: restoreOpenTabsOnLaunch)
-        guard !restorePaths.isEmpty else { return }
-
-        if model.currentFileURL == nil {
-            model.openFile(at: URL(fileURLWithPath: restorePaths[0]))
-        }
-
-        for filePath in restorePaths.dropFirst() {
-            openWindow(value: filePath)
-        }
-    }
-
-    private func handleExternalFileOpenRequest() {
-        let paths = Array(NSOrderedSet(array: ExternalFileOpenStore.shared.consumePendingPaths())) as? [String] ?? []
-        guard !paths.isEmpty else { return }
-
-        var unopenedPaths: [String] = []
-
-        for filePath in paths {
-            if OpenTabsStore.shared.activateWindow(for: filePath) {
-                continue
-            }
-            unopenedPaths.append(filePath)
-        }
-
-        guard !unopenedPaths.isEmpty else {
-            return
-        }
-
-        if model.currentFileURL == nil && !model.hasUnsavedChanges {
-            model.openFile(at: URL(fileURLWithPath: unopenedPaths[0]))
-
-            for filePath in unopenedPaths.dropFirst() {
-                openWindow(value: filePath)
-            }
-            return
-        }
-
-        for filePath in unopenedPaths {
-            openWindow(value: filePath)
+            model.updateDocumentFileURL(documentConfiguration?.fileURL)
         }
     }
 }
 
 private extension ContentView {
+    func openDocument() {
+        DocumentActionController.openDocument()
+    }
+
+    func saveDocument() {
+        DocumentActionController.saveCurrentDocument(using: model)
+    }
+
     @ViewBuilder
     func toolbarButtonLabel(_ title: String, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
@@ -264,82 +231,6 @@ struct DiagnosticsView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-}
-struct WindowConfigurationView: NSViewRepresentable {
-    @ObservedObject var model: EditorModel
-    let windowID: String
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(model: model, windowID: windowID)
-    }
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        context.coordinator.attach(to: view)
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.model = model
-        context.coordinator.attach(to: nsView)
-        context.coordinator.refreshWindowState()
-    }
-
-    @MainActor
-    final class Coordinator: NSObject, NSWindowDelegate {
-        weak var window: NSWindow?
-        weak var previousDelegate: NSWindowDelegate?
-        var model: EditorModel
-        let windowID: String
-
-        init(model: EditorModel, windowID: String) {
-            self.model = model
-            self.windowID = windowID
-        }
-
-        func attach(to view: NSView) {
-            guard let window = view.window, window !== self.window else {
-                return
-            }
-
-            previousDelegate = window.delegate
-            self.window = window
-            window.delegate = self
-            refreshWindowState()
-        }
-
-        func refreshWindowState() {
-            guard let window else {
-                return
-            }
-
-            window.tabbingIdentifier = "GraphicsScriptEditorTabs"
-            window.tabbingMode = .preferred
-            window.isDocumentEdited = model.hasUnsavedChanges
-            window.title = model.documentTitle
-            window.representedURL = model.currentFileURL
-            OpenTabsStore.shared.update(windowID: windowID, filePath: model.currentFileURL?.path, window: window)
-            OpenTabsStore.shared.registerRestoredWindow(window, filePath: model.currentFileURL?.path)
-        }
-
-        func windowShouldClose(_ sender: NSWindow) -> Bool {
-            model.confirmClose(actionName: "close")
-        }
-
-        func windowWillClose(_ notification: Notification) {
-            if NSApp.windows.count > 1 {
-                DispatchQueue.main.async {
-                    guard OpenTabsStore.shared.shouldRemoveClosedTabs else {
-                        return
-                    }
-                    OpenTabsStore.shared.remove(windowID: self.windowID)
-                }
-            }
-            if let window, window.delegate === self {
-                window.delegate = previousDelegate
-            }
         }
     }
 }

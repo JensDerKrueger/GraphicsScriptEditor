@@ -8,38 +8,6 @@ enum GraphicsScriptFileType {
     static let contentType = UTType(exportedAs: typeIdentifier)
 }
 
-@MainActor
-final class ExternalFileOpenStore {
-    static let shared = ExternalFileOpenStore()
-
-    static let didReceiveFilesNotification = Notification.Name("ExternalFileOpenStoreDidReceiveFiles")
-
-    private var pendingPaths: [String] = []
-
-    func enqueue(urls: [URL]) {
-        let paths = urls
-            .filter { $0.isFileURL }
-            .map(\.path)
-
-        guard !paths.isEmpty else {
-            return
-        }
-
-        pendingPaths.append(contentsOf: paths)
-        NotificationCenter.default.post(name: Self.didReceiveFilesNotification, object: nil)
-    }
-
-    func consumePendingPaths() -> [String] {
-        let paths = pendingPaths
-        pendingPaths.removeAll()
-        return paths
-    }
-
-    var hasPendingPaths: Bool {
-        !pendingPaths.isEmpty
-    }
-}
-
 enum AppIconLoader {
     static func apply() {
         guard let iconURL = Bundle.main.url(forResource: "AppRuntimeIcon", withExtension: "png"),
@@ -67,202 +35,129 @@ struct RecentFilesStore {
     }
 }
 
-@MainActor
-final class OpenTabsStore {
-    static let shared = OpenTabsStore()
+struct OpenDocumentStateStore {
+    static let defaultsKey = "openGraphicsScriptDocumentPaths"
 
-    private static let defaultsKey = "openGraphicsScriptTabs"
-
-    private final class WeakWindowBox {
-        weak var window: NSWindow?
-
-        init(window: NSWindow) {
-            self.window = window
-        }
-    }
-
-    private var openTabsByWindowID: [String: String] = [:]
-    private var windowsByWindowID: [String: WeakWindowBox] = [:]
-    private var restoreAttempted = false
-    private var isTerminating = false
-    private var pendingRestoreTabPaths: Set<String> = []
-    private weak var primaryRestoreWindow: NSWindow?
-
-    var persistedPaths: [String] {
-        let paths = UserDefaults.standard.stringArray(forKey: Self.defaultsKey) ?? []
-        return paths.filter { !$0.isEmpty }
-    }
-
-    func update(windowID: String, filePath: String?, window: NSWindow?) {
-        if let window {
-            windowsByWindowID[windowID] = WeakWindowBox(window: window)
-        } else {
-            windowsByWindowID.removeValue(forKey: windowID)
-        }
-
-        if !restoreAttempted, (filePath == nil || filePath?.isEmpty == true) {
-            return
-        }
-
-        if let filePath, !filePath.isEmpty {
-            openTabsByWindowID[windowID] = filePath
-        } else {
-            openTabsByWindowID.removeValue(forKey: windowID)
-        }
-        persistCurrentTabs()
-    }
-
-    func remove(windowID: String) {
-        guard !isTerminating else {
-            return
-        }
-        openTabsByWindowID.removeValue(forKey: windowID)
-        windowsByWindowID.removeValue(forKey: windowID)
-        persistCurrentTabs()
-    }
-
-    func persistCurrentTabs() {
-        UserDefaults.standard.set(Array(openTabsByWindowID.values), forKey: Self.defaultsKey)
-    }
-
-    func consumeRestorePaths(isEnabled: Bool) -> [String] {
-        guard isEnabled, !restoreAttempted else {
-            return []
-        }
-
-        restoreAttempted = true
-        let paths = persistedPaths
-        pendingRestoreTabPaths = Set(paths.dropFirst())
-        primaryRestoreWindow = nil
+    static var fileURLs: [URL] {
+        let paths = UserDefaults.standard.stringArray(forKey: defaultsKey) ?? []
         return paths
+            .filter { !$0.isEmpty }
+            .map { URL(fileURLWithPath: $0) }
     }
 
-    func skipRestore() {
-        guard !restoreAttempted else {
-            return
-        }
-        restoreAttempted = true
-        pendingRestoreTabPaths = []
-        primaryRestoreWindow = nil
-    }
-
-    func beginTermination() {
-        isTerminating = true
-    }
-
-    var shouldRemoveClosedTabs: Bool {
-        !isTerminating
-    }
-
-    func registerRestoredWindow(_ window: NSWindow, filePath: String?) {
-        guard restoreAttempted else {
-            return
-        }
-
-        guard let filePath, !filePath.isEmpty else {
-            if primaryRestoreWindow == nil {
-                primaryRestoreWindow = window
-            }
-            return
-        }
-
-        if primaryRestoreWindow == nil {
-            primaryRestoreWindow = window
-            pendingRestoreTabPaths.remove(filePath)
-            return
-        }
-
-        guard pendingRestoreTabPaths.contains(filePath),
-              let primaryRestoreWindow,
-              primaryRestoreWindow !== window else {
-            return
-        }
-
-        pendingRestoreTabPaths.remove(filePath)
-        DispatchQueue.main.async {
-            primaryRestoreWindow.addTabbedWindow(window, ordered: .above)
-            primaryRestoreWindow.makeKeyAndOrderFront(nil)
-        }
-    }
-
-    func activateWindow(for filePath: String) -> Bool {
-        cleanupWindowRegistry()
-
-        guard let windowID = openTabsByWindowID.first(where: { $0.value == filePath })?.key,
-              let window = windowsByWindowID[windowID]?.window else {
-            return false
-        }
-
-        if let tabGroup = window.tabGroup,
-           let tab = tabGroup.windows.first(where: { $0 === window }) {
-            tabGroup.selectedWindow = tab
-        }
-
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        return true
-    }
-
-    private func cleanupWindowRegistry() {
-        let activeWindowIDs = windowsByWindowID.compactMap { windowID, box in
-            box.window == nil ? nil : windowID
-        }
-        let activeWindowIDSet = Set(activeWindowIDs)
-        windowsByWindowID = windowsByWindowID.filter { $0.value.window != nil }
-        openTabsByWindowID = openTabsByWindowID.filter { activeWindowIDSet.contains($0.key) }
+    static func persistCurrentDocuments() {
+        let paths = NSDocumentController.shared.documents
+            .compactMap(\.fileURL)
+            .map(\.path)
+        UserDefaults.standard.set(paths, forKey: defaultsKey)
     }
 }
 
 final class GraphicsScriptEditorAppDelegate: NSObject, NSApplicationDelegate {
+    private var didReceiveExternalOpen = false
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = true
         NSApp.setActivationPolicy(.regular)
         AppIconLoader.apply()
         NSApp.activate(ignoringOtherApps: true)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.restoreOpenDocumentsIfNeeded()
+        }
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         true
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        false
     }
 
-    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        for window in sender.windows {
-            guard let delegate = window.delegate as? WindowConfigurationView.Coordinator else {
-                continue
-            }
-
-            if !delegate.model.confirmClose(actionName: "quit") {
-                return .terminateCancel
-            }
-        }
-
-        OpenTabsStore.shared.beginTermination()
-        OpenTabsStore.shared.persistCurrentTabs()
-        return .terminateNow
+    func applicationWillTerminate(_ notification: Notification) {
+        OpenDocumentStateStore.persistCurrentDocuments()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        ExternalFileOpenStore.shared.enqueue(urls: urls)
+        didReceiveExternalOpen = !urls.isEmpty
+    }
+
+    private func restoreOpenDocumentsIfNeeded() {
+        guard !didReceiveExternalOpen else {
+            return
+        }
+
+        for fileURL in OpenDocumentStateStore.fileURLs {
+            NSDocumentController.shared.openDocument(withContentsOf: fileURL, display: true) { _, _, error in
+                if let error {
+                    NSLog("Failed to restore graphics script document: %@", error.localizedDescription)
+                }
+            }
+        }
+    }
+}
+
+@MainActor
+private final class SaveContext: NSObject {
+    weak var model: EditorModel?
+
+    init(model: EditorModel?) {
+        self.model = model
+    }
+}
+
+@MainActor
+enum DocumentActionController {
+    private final class SaveDelegate: NSObject {
+        @objc
+        @MainActor
+        func document(_ document: NSDocument, didSave: Bool, contextInfo: UnsafeMutableRawPointer?) {
+            guard let contextInfo else {
+                return
+            }
+
+            let context = Unmanaged<SaveContext>.fromOpaque(contextInfo).takeRetainedValue()
+            guard didSave else {
+                return
+            }
+
+            context.model?.finalizeDocumentSave(fileURL: document.fileURL)
+        }
+    }
+
+    private static let saveDelegate = SaveDelegate()
+
+    static func openDocument() {
+        NSApp.sendAction(#selector(NSDocumentController.openDocument(_:)), to: nil, from: nil)
+    }
+
+    static func saveCurrentDocument(using model: EditorModel?) {
+        guard let document = NSDocumentController.shared.currentDocument else {
+            NSApp.sendAction(#selector(NSDocument.save(_:)), to: nil, from: nil)
+            return
+        }
+
+        model?.prepareForDocumentSaveAttempt()
+        let context = Unmanaged.passRetained(SaveContext(model: model)).toOpaque()
+        document.save(
+            withDelegate: saveDelegate,
+            didSave: #selector(SaveDelegate.document(_:didSave:contextInfo:)),
+            contextInfo: context
+        )
+    }
+
+    static func saveCurrentDocumentAs() {
+        NSApp.sendAction(#selector(NSDocument.saveAs(_:)), to: nil, from: nil)
     }
 }
 
 struct EditorMenuCommands: Commands {
     @FocusedObject private var model: EditorModel?
-    @Environment(\.openWindow) private var openWindow
     @AppStorage(SettingsKeys.editorIndentationStyle) private var editorIndentationStyleRawValue = EditorIndentationStyle.fourSpaces.rawValue
 
     var body: some Commands {
         CommandGroup(after: .newItem) {
-            Button("Open Script…") {
-                model?.loadFile()
-            }
-            .keyboardShortcut("o")
-            .disabled(model == nil)
-
             Menu("Open Recent") {
                 if RecentFilesStore.filePaths.isEmpty {
                     Text("No Recent Files")
@@ -278,13 +173,13 @@ struct EditorMenuCommands: Commands {
 
         CommandGroup(replacing: .saveItem) {
             Button("Save Script") {
-                model?.saveFile()
+                DocumentActionController.saveCurrentDocument(using: model)
             }
             .keyboardShortcut("s")
             .disabled(model == nil)
 
             Button("Save Script As…") {
-                model?.saveFileAs()
+                DocumentActionController.saveCurrentDocumentAs()
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
             .disabled(model == nil)
@@ -332,10 +227,13 @@ struct EditorMenuCommands: Commands {
 
     private func openRecentFile(at filePath: String) {
         let url = URL(fileURLWithPath: filePath)
-        if let model {
-            model.openFile(at: url)
-        } else {
-            openWindow(value: filePath)
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
+            guard let error else {
+                return
+            }
+
+            NSSound.beep()
+            NSLog("Failed to open recent graphics script: %@", error.localizedDescription)
         }
     }
 
@@ -345,26 +243,24 @@ struct EditorMenuCommands: Commands {
         NSApp.sendAction(#selector(NSResponder.performTextFinderAction(_:)), to: nil, from: sender)
     }
 }
+
 @main
 struct GraphicsScriptEditorApp: App {
     @NSApplicationDelegateAdaptor(GraphicsScriptEditorAppDelegate.self) private var appDelegate
-    @AppStorage(SettingsKeys.restoreOpenTabsOnLaunch) private var restoreOpenTabsOnLaunch = true
 
     var body: some Scene {
-        editorScene
-        Settings {
-            SettingsView()
-        }
-    }
-
-    private var editorScene: some Scene {
-        WindowGroup("Graphics Script Editor", for: String.self) { filePath in
-            ContentView(filePath: filePath)
-        } defaultValue: {
-            ""
+        DocumentGroup(newDocument: GraphicsScriptDocument()) { configuration in
+            ContentView(
+                document: configuration.$document,
+                fileURL: configuration.fileURL
+            )
         }
         .commands {
             EditorMenuCommands()
+        }
+
+        Settings {
+            SettingsView()
         }
     }
 }
