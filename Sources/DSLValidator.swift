@@ -1,9 +1,15 @@
 import Foundation
 
 final class DSLValidator {
+    private let commandDefinitions: [DSLCommandSet.CommandDefinition]
+
+    init(commandDefinitions: [DSLCommandSet.CommandDefinition] = []) {
+        self.commandDefinitions = commandDefinitions
+    }
+
     func validate(_ script: String) -> [Diagnostic] {
         let interpreter = CommandInterpreter()
-        DSLCommandSet.registerAll(in: interpreter)
+        DSLCommandSet.registerAll(in: interpreter, extraDefinitions: commandDefinitions)
 
         let loadResult = interpreter.loadFromString(script)
         if loadResult != .success {

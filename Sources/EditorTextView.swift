@@ -324,6 +324,7 @@ struct EditorTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: EditorContainerView, context: Context) {
         guard let textView = context.coordinator.textView else { return }
+        context.coordinator.parent = self
 
         if context.coordinator.isUpdating {
             return
@@ -376,7 +377,7 @@ struct EditorTextView: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
-        private let parent: EditorTextView
+        var parent: EditorTextView
         var textView: NSTextView?
         weak var containerView: EditorContainerView?
         var isUpdating = false

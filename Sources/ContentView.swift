@@ -52,6 +52,13 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
 
                 Button {
+                    model.loadCommandDefinitionsFromPanel()
+                } label: {
+                    toolbarButtonLabel("Commands", systemImage: "list.bullet.rectangle")
+                }
+                .buttonStyle(.bordered)
+
+                Button {
                     model.runScript()
                 } label: {
                     toolbarButtonLabel("Run", systemImage: "play.fill")

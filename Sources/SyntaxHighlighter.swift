@@ -53,6 +53,7 @@ final class SyntaxHighlighter {
     )
     private let cacheLock = NSLock()
     private var cachedLineAnalysesByText: [String: CachedLineAnalysis] = [:]
+    private var cachedCommandNames: Set<String>?
 
     func makePlan(
         for text: String,
@@ -175,6 +176,10 @@ final class SyntaxHighlighter {
 
     private func cachedAnalyses(for documentLines: [DocumentLine], commandNames: Set<String>) -> [CachedLineAnalysis] {
         cacheLock.lock()
+        if cachedCommandNames != commandNames {
+            cachedLineAnalysesByText.removeAll()
+            cachedCommandNames = commandNames
+        }
         let cachedAnalysesByText = cachedLineAnalysesByText
         cacheLock.unlock()
 
@@ -190,7 +195,9 @@ final class SyntaxHighlighter {
         }
 
         cacheLock.lock()
-        cachedLineAnalysesByText = updatedCache
+        if cachedCommandNames == commandNames {
+            cachedLineAnalysesByText = updatedCache
+        }
         cacheLock.unlock()
 
         return resolvedAnalyses

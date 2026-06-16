@@ -40,6 +40,33 @@ The app combines a native editing experience with just enough IDE behavior to be
 - Live syntax checking while editing
 - Diagnostics with line-numbered error reporting
 - Validation powered by the built-in command interpreter in validation mode
+- Optional external command definition files for application-specific commands
+
+### Command Definitions
+
+The editor always knows the base graphics-script DSL and base tool commands.
+Application-specific commands can be loaded from a human-readable `.gsccommands`
+file. Each non-empty line defines one signature:
+
+```text
+commandName(type, type)
+commandWithNoArguments()
+matrixCommand(float * 16)
+```
+
+Supported argument types are `int`, `int64`, `uint32`, `bool`, `float`,
+`double`, `string`, and `restString`. Use repeated lines for overloads. Lines
+can contain `#` comments.
+
+Load a definition file with the `Commands` toolbar button, or put a path in the
+first script comment:
+
+```text
+# CommandDefinitions/volume-renderer.gsccommands
+```
+
+Relative paths are resolved next to the script file. The sample volume-renderer
+definitions live in `CommandDefinitions/volume-renderer.gsccommands`.
 
 ### Execution
 

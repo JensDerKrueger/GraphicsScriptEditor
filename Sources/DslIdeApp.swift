@@ -218,6 +218,11 @@ struct EditorMenuCommands: Commands {
                 model?.correctIndentation(using: resolvedIndentationStyle.indentUnit)
             }
             .disabled(model == nil)
+
+            Button("Load Command Definitions…") {
+                model?.loadCommandDefinitionsFromPanel()
+            }
+            .disabled(model == nil)
         }
     }
 

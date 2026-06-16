@@ -9,6 +9,7 @@ final class EditorModel: ObservableObject {
     @Published var text: String = "" {
         didSet {
             updateDirtyState()
+            refreshScriptCommandDefinitions()
         }
     }
     @Published var diagnostics: [Diagnostic] = []
@@ -18,8 +19,7 @@ final class EditorModel: ObservableObject {
     @Published var cursorLine: Int = 1
     @Published var cursorColumn: Int = 1
     @Published private(set) var hasUnsavedChanges = false
-
-    let commandNames: Set<String> = DSLCommandSet.commandNames
+    @Published private(set) var commandNames: Set<String> = DSLCommandSet.commandNames()
 
     var documentTitle: String {
         currentFileURL?.lastPathComponent ?? "Untitled"
@@ -32,13 +32,21 @@ final class EditorModel: ObservableObject {
     private var lastKnownFileModificationDate: Date?
     private var ignoredExternalModificationDate: Date?
     private var isPresentingExternalChangeAlert = false
+    private var isCheckingExternalFileChange = false
     private var internalWriteSuppressionUntil: Date?
     private var validationGeneration = 0
+    private var manualCommandDefinitionURL: URL?
+    private var manualCommandDefinitions: [DSLCommandSet.CommandDefinition] = []
+    private var scriptCommandDefinitionURL: URL?
+    private var scriptCommandDefinitions: [DSLCommandSet.CommandDefinition] = []
+    private var commandDefinitionDiagnostics: [Diagnostic] = []
 
     init(initialText: String = EditorModel.defaultScriptText, initialFileURL: URL? = nil) {
         text = initialText
         lastSavedText = text
         currentFileURL = initialFileURL
+        refreshScriptCommandDefinitions()
+        refreshCommandNames()
         validateNow()
 
         if let initialFileURL {
@@ -53,6 +61,7 @@ final class EditorModel: ObservableObject {
         currentFileURL = fileURL
         lastSavedText = normalizedText
         hasUnsavedChanges = false
+        refreshScriptCommandDefinitions()
         validateNow()
 
         if let fileURL {
@@ -72,6 +81,8 @@ final class EditorModel: ObservableObject {
         }
 
         currentFileURL = fileURL
+        refreshScriptCommandDefinitions()
+        validateNow()
 
         if let fileURL {
             RecentFilesStore.register(url: fileURL)
@@ -154,6 +165,23 @@ final class EditorModel: ObservableObject {
         }
     }
 
+    func loadCommandDefinitionsFromPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: CommandDefinitionFile.filenameExtension) ?? .plainText,
+            .plainText
+        ]
+        panel.title = "Open Command Definitions"
+        panel.prompt = "Load"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            loadManualCommandDefinitions(from: url)
+        }
+    }
+
     func openFile(at url: URL) {
         do {
             text = normalizedLoadedText(try String(contentsOf: url, encoding: .utf8))
@@ -161,6 +189,7 @@ final class EditorModel: ObservableObject {
             lastSavedText = text
             hasUnsavedChanges = false
             statusMessage = "Loaded \(url.lastPathComponent)"
+            refreshScriptCommandDefinitions()
             validateNow()
             RecentFilesStore.register(url: url)
             refreshObservedFileState(for: url)
@@ -257,6 +286,197 @@ final class EditorModel: ObservableObject {
         return createTemporaryRunFile()
     }
 
+    private func loadManualCommandDefinitions(from url: URL) {
+        let result = CommandDefinitionFile.load(from: url)
+        guard result.issues.isEmpty else {
+            manualCommandDefinitionURL = nil
+            manualCommandDefinitions = []
+            commandDefinitionDiagnostics = diagnostics(for: result.issues, sourceURL: url)
+            refreshCommandNames()
+            validateNow()
+            statusMessage = "Could not load \(url.lastPathComponent)"
+            return
+        }
+
+        manualCommandDefinitionURL = url
+        manualCommandDefinitions = result.definitions
+        commandDefinitionDiagnostics = []
+        refreshCommandNames()
+        validateNow()
+        statusMessage = "Loaded \(url.lastPathComponent)"
+    }
+
+    private func refreshScriptCommandDefinitions() {
+        guard let referencedURL = firstCommandDefinitionURL(in: text, relativeTo: currentFileURL) else {
+            if scriptCommandDefinitionURL != nil || !scriptCommandDefinitions.isEmpty {
+                scriptCommandDefinitionURL = nil
+                scriptCommandDefinitions = []
+                commandDefinitionDiagnostics = []
+                refreshCommandNames()
+                validateNow()
+            }
+            return
+        }
+
+        guard referencedURL != scriptCommandDefinitionURL else {
+            return
+        }
+
+        let result = CommandDefinitionFile.load(from: referencedURL)
+        guard result.issues.isEmpty else {
+            scriptCommandDefinitionURL = referencedURL
+            scriptCommandDefinitions = []
+            commandDefinitionDiagnostics = diagnostics(for: result.issues, sourceURL: referencedURL)
+            refreshCommandNames()
+            validateNow()
+            statusMessage = "Could not load \(referencedURL.lastPathComponent)"
+            return
+        }
+
+        scriptCommandDefinitionURL = referencedURL
+        scriptCommandDefinitions = result.definitions
+        commandDefinitionDiagnostics = []
+        refreshCommandNames()
+        validateNow()
+        statusMessage = "Loaded \(referencedURL.lastPathComponent)"
+    }
+
+    private func refreshCommandNames() {
+        commandNames = DSLCommandSet.commandNames(extraDefinitions: activeCommandDefinitions)
+    }
+
+    private var activeCommandDefinitions: [DSLCommandSet.CommandDefinition] {
+        mergeCommandDefinitions(manualCommandDefinitions + scriptCommandDefinitions)
+    }
+
+    private func mergeCommandDefinitions(_ definitions: [DSLCommandSet.CommandDefinition]) -> [DSLCommandSet.CommandDefinition] {
+        var order: [String] = []
+        var signaturesByName: [String: [[ArgType]]] = [:]
+        var seenSignatures: Set<String> = []
+
+        for definition in definitions {
+            if signaturesByName[definition.name] == nil {
+                order.append(definition.name)
+                signaturesByName[definition.name] = []
+            }
+
+            for signature in definition.signatures {
+                let key = "\(definition.name)(\(signature.map(typeName).joined(separator: ",")))"
+                guard !seenSignatures.contains(key) else {
+                    continue
+                }
+                seenSignatures.insert(key)
+                signaturesByName[definition.name]?.append(signature)
+            }
+        }
+
+        return order.compactMap { name in
+            guard let signatures = signaturesByName[name] else {
+                return nil
+            }
+            return DSLCommandSet.CommandDefinition(name: name, signatures: signatures)
+        }
+    }
+
+    private func firstCommandDefinitionURL(in script: String, relativeTo scriptURL: URL?) -> URL? {
+        guard let rawReference = firstCommentText(in: script) else {
+            return nil
+        }
+
+        let reference = trimmedPathReference(rawReference)
+        guard !reference.isEmpty else {
+            return nil
+        }
+
+        return resolvedCommandDefinitionURL(for: reference, relativeTo: scriptURL)
+    }
+
+    private func firstCommentText(in script: String) -> String? {
+        for line in script.components(separatedBy: .newlines) {
+            guard let hashIndex = line.firstIndex(of: "#") else {
+                continue
+            }
+
+            let commentStart = line.index(after: hashIndex)
+            return String(line[commentStart...])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return nil
+    }
+
+    private func trimmedPathReference(_ reference: String) -> String {
+        var trimmed = reference.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmed.hasPrefix("commands:") {
+            trimmed = String(trimmed.dropFirst("commands:".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        if trimmed.count >= 2,
+           let first = trimmed.first,
+           let last = trimmed.last,
+           (first == "\"" && last == "\"") || (first == "'" && last == "'") {
+            trimmed.removeFirst()
+            trimmed.removeLast()
+        }
+
+        return trimmed
+    }
+
+    private func resolvedCommandDefinitionURL(for reference: String, relativeTo scriptURL: URL?) -> URL? {
+        let expandedReference = (reference as NSString).expandingTildeInPath
+        let candidateURL: URL
+
+        if expandedReference.hasPrefix("/") {
+            candidateURL = URL(fileURLWithPath: expandedReference)
+        } else if let scriptURL {
+            candidateURL = scriptURL.deletingLastPathComponent().appendingPathComponent(expandedReference)
+        } else {
+            candidateURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                .appendingPathComponent(expandedReference)
+        }
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: candidateURL.path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else {
+            return nil
+        }
+
+        return candidateURL
+    }
+
+    private func diagnostics(for issues: [CommandDefinitionFile.ParseIssue], sourceURL: URL) -> [Diagnostic] {
+        issues.map { issue in
+            Diagnostic(
+                line: 1,
+                message: "\(sourceURL.lastPathComponent) line \(issue.line): \(issue.message)",
+                code: .invalidArguments
+            )
+        }
+    }
+
+    private func typeName(_ type: ArgType) -> String {
+        switch type {
+        case .int:
+            return "int"
+        case .int64:
+            return "int64"
+        case .uint32:
+            return "uint32"
+        case .bool:
+            return "bool"
+        case .float:
+            return "float"
+        case .double:
+            return "double"
+        case .string:
+            return "string"
+        case .restString:
+            return "restString"
+        }
+    }
+
     @discardableResult
     private func writeFile(_ url: URL) -> Bool {
         writeFile(url, updateStatus: true)
@@ -342,6 +562,7 @@ final class EditorModel: ObservableObject {
     private func checkForExternalFileChanges() {
         guard let currentFileURL,
               !isPresentingExternalChangeAlert,
+              !isCheckingExternalFileChange,
               let currentModificationDate = fileModificationDate(for: currentFileURL) else {
             return
         }
@@ -361,7 +582,51 @@ final class EditorModel: ObservableObject {
             return
         }
 
-        presentExternalChangeAlert(for: currentFileURL, modificationDate: currentModificationDate)
+        let currentText = text
+        let savedText = lastSavedText
+        isCheckingExternalFileChange = true
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let diskText = self?.fileContents(for: currentFileURL)
+
+            DispatchQueue.main.async {
+                guard let self else {
+                    return
+                }
+
+                self.isCheckingExternalFileChange = false
+
+                guard self.currentFileURL == currentFileURL,
+                      !self.isPresentingExternalChangeAlert else {
+                    return
+                }
+
+                guard let latestModificationDate = self.fileModificationDate(for: currentFileURL),
+                      latestModificationDate >= currentModificationDate else {
+                    return
+                }
+
+                guard let diskText else {
+                    return
+                }
+
+                if diskText == currentText {
+                    self.lastSavedText = currentText
+                    self.hasUnsavedChanges = false
+                    self.lastKnownFileModificationDate = latestModificationDate
+                    self.ignoredExternalModificationDate = nil
+                    return
+                }
+
+                if diskText == savedText {
+                    self.lastKnownFileModificationDate = latestModificationDate
+                    self.ignoredExternalModificationDate = nil
+                    return
+                }
+
+                self.presentExternalChangeAlert(for: currentFileURL, modificationDate: latestModificationDate)
+            }
+        }
     }
 
     private func presentExternalChangeAlert(for url: URL, modificationDate: Date) {
@@ -390,6 +655,10 @@ final class EditorModel: ObservableObject {
 
     private func fileModificationDate(for url: URL) -> Date? {
         try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    }
+
+    private func fileContents(for url: URL) -> String? {
+        try? String(contentsOf: url, encoding: .utf8)
     }
 
     private func suppressExternalChangeDetection() {
@@ -474,8 +743,13 @@ final class EditorModel: ObservableObject {
     }
 
     private func validate(snapshot: String, generation: Int) {
+        let commandDefinitions = activeCommandDefinitions
+        let definitionDiagnostics = commandDefinitionDiagnostics
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let diagnostics = DSLValidator().validate(snapshot)
+            let diagnostics = definitionDiagnostics.isEmpty
+                ? DSLValidator(commandDefinitions: commandDefinitions).validate(snapshot)
+                : definitionDiagnostics
             DispatchQueue.main.async {
                 guard let self,
                       self.isErrorCheckingEnabled,
