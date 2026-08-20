@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "521111111111111111111111"
-               BuildableName = "Graphics Script Editor Release.app"
-               BlueprintName = "Graphics Script Editor Release"
+               BlueprintIdentifier = "511111111111111111111111"
+               BuildableName = "Graphics Script Editor.app"
+               BlueprintName = "Graphics Script Editor"
                ReferencedContainer = "container:GraphicsScriptEditor.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -44,9 +44,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "521111111111111111111111"
-            BuildableName = "Graphics Script Editor Release.app"
-            BlueprintName = "Graphics Script Editor Release"
+            BlueprintIdentifier = "511111111111111111111111"
+            BuildableName = "Graphics Script Editor.app"
+            BlueprintName = "Graphics Script Editor"
             ReferencedContainer = "container:GraphicsScriptEditor.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -61,9 +61,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "521111111111111111111111"
-            BuildableName = "Graphics Script Editor Release.app"
-            BlueprintName = "Graphics Script Editor Release"
+            BlueprintIdentifier = "511111111111111111111111"
+            BuildableName = "Graphics Script Editor.app"
+            BlueprintName = "Graphics Script Editor"
             ReferencedContainer = "container:GraphicsScriptEditor.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

@@ -15,11 +15,12 @@
 		111111111111111111111116 /* DSLValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111116 /* DSLValidator.swift */; };
 		111111111111111111111117 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111117 /* EditorModel.swift */; };
 		111111111111111111111118 /* EditorTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111118 /* EditorTextView.swift */; };
-		111111111111111111111119 /* ScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111119 /* ScriptRunner.swift */; };
 		11111111111111111111111A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21111111111111111111111A /* SettingsView.swift */; };
 		11111111111111111111111B /* SyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21111111111111111111111B /* SyntaxHighlighter.swift */; };
 		11111111111111111111111C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111121 /* Assets.xcassets */; };
 		11111111111111111111111D /* AppRuntimeIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111122 /* AppRuntimeIcon.png */; };
+		56E000012F80000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56E000052F80000000000001 /* Localizable.strings */; };
+		56E000072F80000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 56E000092F80000000000001 /* PrivacyInfo.xcprivacy */; };
 		121111111111111111111111 /* CommandInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111111 /* CommandInterpreter.swift */; };
 		121111111111111111111112 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111112 /* ContentView.swift */; };
 		121111111111111111111113 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111113 /* Diagnostics.swift */; };
@@ -28,11 +29,12 @@
 		121111111111111111111116 /* DSLValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111116 /* DSLValidator.swift */; };
 		121111111111111111111117 /* EditorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111117 /* EditorModel.swift */; };
 		121111111111111111111118 /* EditorTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111118 /* EditorTextView.swift */; };
-		121111111111111111111119 /* ScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111119 /* ScriptRunner.swift */; };
 		12111111111111111111111A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21111111111111111111111A /* SettingsView.swift */; };
 		12111111111111111111111B /* SyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21111111111111111111111B /* SyntaxHighlighter.swift */; };
 		12111111111111111111111C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111121 /* Assets.xcassets */; };
 		12111111111111111111111D /* AppRuntimeIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111122 /* AppRuntimeIcon.png */; };
+		56E000022F80000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56E000052F80000000000001 /* Localizable.strings */; };
+		56E000082F80000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 56E000092F80000000000001 /* PrivacyInfo.xcprivacy */; };
 		564BE83A2F7BFB4C0019E369 /* GraphicsScriptDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564BE8392F7BFB4C0019E369 /* GraphicsScriptDocument.swift */; };
 		564BE83B2F7BFB4C0019E369 /* GraphicsScriptDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564BE8392F7BFB4C0019E369 /* GraphicsScriptDocument.swift */; };
 		56DA37EC2F742C1100C88928 /* SecurityScopedAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DA37EB2F742C1100C88928 /* SecurityScopedAccess.swift */; };
@@ -48,12 +50,15 @@
 		211111111111111111111116 /* DSLValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSLValidator.swift; sourceTree = "<group>"; };
 		211111111111111111111117 /* EditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorModel.swift; sourceTree = "<group>"; };
 		211111111111111111111118 /* EditorTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorTextView.swift; sourceTree = "<group>"; };
-		211111111111111111111119 /* ScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptRunner.swift; sourceTree = "<group>"; };
 		21111111111111111111111A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		21111111111111111111111B /* SyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntaxHighlighter.swift; sourceTree = "<group>"; };
 		21111111111111111111111C /* Graphics Script Editor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Graphics Script Editor.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		211111111111111111111121 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		211111111111111111111122 /* AppRuntimeIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppRuntimeIcon.png; sourceTree = "<group>"; };
+		56E000032F80000000000001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		56E000042F80000000000001 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		56E000062F80000000000001 /* GraphicsScriptEditor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GraphicsScriptEditor.entitlements; sourceTree = "<group>"; };
+		56E000092F80000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		22111111111111111111111C /* Graphics Script Editor Release.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Graphics Script Editor Release.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		564BE8392F7BFB4C0019E369 /* GraphicsScriptDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsScriptDocument.swift; sourceTree = "<group>"; };
 		56DA37EB2F742C1100C88928 /* SecurityScopedAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccess.swift; sourceTree = "<group>"; };
@@ -97,7 +102,6 @@
 				211111111111111111111116 /* DSLValidator.swift */,
 				211111111111111111111117 /* EditorModel.swift */,
 				211111111111111111111118 /* EditorTextView.swift */,
-				211111111111111111111119 /* ScriptRunner.swift */,
 				21111111111111111111111A /* SettingsView.swift */,
 				21111111111111111111111B /* SyntaxHighlighter.swift */,
 				56DA37EB2F742C1100C88928 /* SecurityScopedAccess.swift */,
@@ -120,11 +124,26 @@
 			children = (
 				211111111111111111111121 /* Assets.xcassets */,
 				211111111111111111111122 /* AppRuntimeIcon.png */,
+				56E000062F80000000000001 /* GraphicsScriptEditor.entitlements */,
+				56E000092F80000000000001 /* PrivacyInfo.xcprivacy */,
+				56E000052F80000000000001 /* Localizable.strings */,
 			);
 			path = GraphicsScriptEditor/Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXVariantGroup section */
+		56E000052F80000000000001 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				56E000032F80000000000001 /* en */,
+				56E000042F80000000000001 /* de */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin PBXNativeTarget section */
 		511111111111111111111111 /* Graphics Script Editor */ = {
@@ -185,6 +204,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				de,
 				Base,
 			);
 			mainGroup = 411111111111111111111111;
@@ -205,6 +225,8 @@
 			files = (
 				11111111111111111111111C /* Assets.xcassets in Resources */,
 				11111111111111111111111D /* AppRuntimeIcon.png in Resources */,
+				56E000012F80000000000001 /* Localizable.strings in Resources */,
+				56E000072F80000000000001 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -214,6 +236,8 @@
 			files = (
 				12111111111111111111111C /* Assets.xcassets in Resources */,
 				12111111111111111111111D /* AppRuntimeIcon.png in Resources */,
+				56E000022F80000000000001 /* Localizable.strings in Resources */,
+				56E000082F80000000000001 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -233,7 +257,6 @@
 				564BE83B2F7BFB4C0019E369 /* GraphicsScriptDocument.swift in Sources */,
 				111111111111111111111117 /* EditorModel.swift in Sources */,
 				111111111111111111111118 /* EditorTextView.swift in Sources */,
-				111111111111111111111119 /* ScriptRunner.swift in Sources */,
 				56DA37ED2F742C1100C88928 /* SecurityScopedAccess.swift in Sources */,
 				11111111111111111111111A /* SettingsView.swift in Sources */,
 				11111111111111111111111B /* SyntaxHighlighter.swift in Sources */,
@@ -253,7 +276,6 @@
 				564BE83A2F7BFB4C0019E369 /* GraphicsScriptDocument.swift in Sources */,
 				121111111111111111111117 /* EditorModel.swift in Sources */,
 				121111111111111111111118 /* EditorTextView.swift in Sources */,
-				121111111111111111111119 /* ScriptRunner.swift in Sources */,
 				56DA37EC2F742C1100C88928 /* SecurityScopedAccess.swift in Sources */,
 				12111111111111111111111A /* SettingsView.swift in Sources */,
 				12111111111111111111111B /* SyntaxHighlighter.swift in Sources */,
@@ -354,8 +376,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -381,8 +405,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -409,15 +435,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GraphicsScriptEditor/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Graphics Script Editor Release";
+				INFOPLIST_KEY_CFBundleDisplayName = "Graphics Script Editor";
 				INFOPLIST_KEY_CFBundleDocumentTypes = "{\n    CFBundleTypeName = \"Graphics Script File\";\n    CFBundleTypeRole = Editor;\n    LSHandlerRank = Owner;\n    LSItemContentTypes =     (\n        \"de.cgvis.graphicsscript\"\n    );\n}";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UTExportedTypeDeclarations = "{\n    UTTypeConformsTo =     (\n        \"public.plain-text\"\n    );\n    UTTypeDescription = \"Graphics Script File\";\n    UTTypeIdentifier = \"de.cgvis.graphicsscript\";\n    UTTypeTagSpecification =     {\n        \"public.filename-extension\" =         (\n            gsc\n        );\n        \"public.mime-type\" =         (\n            \"text/x-graphics-script\"\n        );\n    };\n}";
@@ -428,8 +456,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor.release;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor;
+				PRODUCT_NAME = "Graphics Script Editor";
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -441,15 +469,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GraphicsScriptEditor/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Graphics Script Editor Release";
+				INFOPLIST_KEY_CFBundleDisplayName = "Graphics Script Editor";
 				INFOPLIST_KEY_CFBundleDocumentTypes = "{\n    CFBundleTypeName = \"Graphics Script File\";\n    CFBundleTypeRole = Editor;\n    LSHandlerRank = Owner;\n    LSItemContentTypes =     (\n        \"de.cgvis.graphicsscript\"\n    );\n}";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UTExportedTypeDeclarations = "{\n    UTTypeConformsTo =     (\n        \"public.plain-text\"\n    );\n    UTTypeDescription = \"Graphics Script File\";\n    UTTypeIdentifier = \"de.cgvis.graphicsscript\";\n    UTTypeTagSpecification =     {\n        \"public.filename-extension\" =         (\n            gsc\n        );\n        \"public.mime-type\" =         (\n            \"text/x-graphics-script\"\n        );\n    };\n}";
@@ -459,8 +489,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor.release;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor;
+				PRODUCT_NAME = "Graphics Script Editor";
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-Osize";

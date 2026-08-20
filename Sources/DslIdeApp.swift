@@ -147,7 +147,8 @@ enum DocumentActionController {
         )
     }
 
-    static func saveCurrentDocumentAs() {
+    static func saveCurrentDocumentAs(using model: EditorModel?) {
+        model?.prepareForDocumentSaveAttempt()
         NSApp.sendAction(#selector(NSDocument.saveAs(_:)), to: nil, from: nil)
     }
 }
@@ -179,7 +180,7 @@ struct EditorMenuCommands: Commands {
             .disabled(model == nil)
 
             Button("Save Script As…") {
-                DocumentActionController.saveCurrentDocumentAs()
+                DocumentActionController.saveCurrentDocumentAs(using: model)
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
             .disabled(model == nil)
@@ -208,12 +209,6 @@ struct EditorMenuCommands: Commands {
         }
 
         CommandMenu("Script") {
-            Button("Run Script") {
-                model?.runScript()
-            }
-            .keyboardShortcut("r")
-            .disabled(model == nil)
-
             Button("Correct Indentation") {
                 model?.correctIndentation(using: resolvedIndentationStyle.indentUnit)
             }

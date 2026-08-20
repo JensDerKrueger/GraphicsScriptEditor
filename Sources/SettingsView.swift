@@ -2,9 +2,6 @@ import SwiftUI
 import AppKit
 
 enum SettingsKeys {
-    static let runnerPath = "dslRunnerPath"
-    static let runnerBookmark = "dslRunnerBookmark"
-    static let runnerDirectoryBookmark = "dslRunnerDirectoryBookmark"
     static let editorFontName = "editorFontName"
     static let editorFontSize = "editorFontSize"
     static let showLineNumbers = "showLineNumbers"
@@ -27,7 +24,7 @@ enum EditorIndentationStyle: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .twoSpaces:
             "2 Spaces"
@@ -52,7 +49,6 @@ enum EditorIndentationStyle: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage(SettingsKeys.runnerPath) private var runnerPath: String = ""
     @AppStorage(SettingsKeys.editorFontName) private var editorFontName: String = "Menlo"
     @AppStorage(SettingsKeys.editorFontSize) private var editorFontSize: Double = 13
     @AppStorage(SettingsKeys.showLineNumbers) private var showLineNumbers = true
@@ -98,25 +94,6 @@ struct SettingsView: View {
 
     private var generalTab: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Runner Program")
-                .font(.headline)
-
-            HStack {
-                TextField("/path/to/program", text: $runnerPath)
-                    .textFieldStyle(.roundedBorder)
-
-                Button("Choose...") {
-                    chooseRunner()
-                }
-                .disabled(!isRunnerPickerAvailable)
-            }
-
-            Text("The program will be executed as: <program> --script <file>")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            Divider()
-
             Text("Autosave")
                 .font(.headline)
 
@@ -234,25 +211,6 @@ struct SettingsView: View {
 
             Spacer()
         }
-    }
-
-    private func chooseRunner() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.title = "Select Runner Program"
-        panel.prompt = "Select"
-
-        if panel.runModal() == .OK, let url = panel.url {
-            runnerPath = url.path
-            SecurityScopedAccess.storeBookmark(for: url, defaultsKey: SettingsKeys.runnerBookmark)
-            SecurityScopedAccess.storeBookmark(for: url.deletingLastPathComponent(), defaultsKey: SettingsKeys.runnerDirectoryBookmark)
-        }
-    }
-
-    private var isRunnerPickerAvailable: Bool {
-        true
     }
 
     private var availableEditorFonts: [String] {

@@ -58,14 +58,6 @@ struct ContentView: View {
                 }
                 .buttonStyle(.bordered)
 
-                Button {
-                    model.runScript()
-                } label: {
-                    toolbarButtonLabel("Run", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.accentColor)
-
                 Spacer()
 
                 Text(model.statusMessage)
@@ -126,7 +118,7 @@ private extension ContentView {
     }
 
     @ViewBuilder
-    func toolbarButtonLabel(_ title: String, systemImage: String) -> some View {
+    func toolbarButtonLabel(_ title: LocalizedStringKey, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
             .labelStyle(.titleAndIcon)
             .font(.system(size: 13, weight: .semibold))
@@ -171,22 +163,10 @@ private extension ContentView {
         VStack(alignment: .leading, spacing: 10) {
             DiagnosticsView(diagnostics: model.diagnostics, isErrorCheckingEnabled: editorErrorCheckingEnabled)
 
-            if !model.lastRunOutput.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Run Output")
-                        .font(.headline)
-
-                    TextEditor(text: .constant(model.lastRunOutput))
-                        .font(.system(size: 12, design: .monospaced))
-                        .frame(minHeight: 120)
-                        .disabled(true)
-                        .border(Color.gray.opacity(0.2))
-                }
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 44)
-        .frame(maxHeight: model.lastRunOutput.isEmpty ? 96 : 220, alignment: .top)
+        .frame(maxHeight: 96, alignment: .top)
         .padding(12)
     }
 
@@ -232,7 +212,7 @@ struct DiagnosticsView: View {
         } else {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(diagnostics) { diagnostic in
-                    Text("Line \(diagnostic.line): \(diagnostic.message)")
+                    Text("\(String(localized: "Line")) \(diagnostic.line): \(diagnostic.message)")
                         .font(.caption)
                         .foregroundColor(.red)
                 }

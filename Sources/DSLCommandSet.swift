@@ -34,7 +34,7 @@ struct DSLCommandSet {
         CommandDefinition(name: "logfile", signatures: [[.string]]),
         CommandDefinition(name: "logtime", signatures: [[]]),
         CommandDefinition(name: "logfps", signatures: [[]]),
-        CommandDefinition(name: "logGLInfo", signatures: [[.bool]]),
+        CommandDefinition(name: "logGPUInfo", signatures: [[], [.bool]]),
         CommandDefinition(name: "log", signatures: [[.restString]]),
         CommandDefinition(name: "setdir", signatures: [[.string]]),
         CommandDefinition(name: "quit", signatures: [[]])
@@ -97,7 +97,12 @@ struct CommandDefinitionFile {
         } catch {
             return ParseResult(
                 definitions: [],
-                issues: [ParseIssue(line: 1, message: "Could not read command definitions: \(error.localizedDescription)")]
+                issues: [
+                    ParseIssue(
+                        line: 1,
+                        message: String(format: String(localized: "Could not read command definitions: %@"), error.localizedDescription)
+                    )
+                ]
             )
         }
     }
@@ -151,12 +156,12 @@ struct CommandDefinitionFile {
         }
 
         guard line.hasSuffix(")") else {
-            return .failure(LineParseError(message: "Expected closing ')' in command definition"))
+            return .failure(LineParseError(message: String(localized: "Expected closing ')' in command definition")))
         }
 
         let name = line[..<openParen].trimmingCharacters(in: .whitespacesAndNewlines)
         guard isValidCommandName(name) else {
-            return .failure(LineParseError(message: "Invalid command name"))
+            return .failure(LineParseError(message: String(localized: "Invalid command name")))
         }
 
         let argsStart = line.index(after: openParen)
@@ -169,7 +174,7 @@ struct CommandDefinitionFile {
     private static func parseWhitespaceDefinition(_ line: String) -> Result<(name: String, signature: [ArgType]), LineParseError> {
         let parts = line.split(whereSeparator: \.isWhitespace).map(String.init)
         guard let name = parts.first, isValidCommandName(name) else {
-            return .failure(LineParseError(message: "Invalid command name"))
+            return .failure(LineParseError(message: String(localized: "Invalid command name")))
         }
 
         guard parts.count > 1 else {
@@ -192,7 +197,7 @@ struct CommandDefinitionFile {
         for rawArgument in rawArguments {
             let token = rawArgument.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !token.isEmpty else {
-                return .failure(LineParseError(message: "Empty argument type"))
+                return .failure(LineParseError(message: String(localized: "Empty argument type")))
             }
 
             switch parseArgumentToken(token) {
@@ -205,7 +210,7 @@ struct CommandDefinitionFile {
 
         if let restStringIndex = signature.firstIndex(of: .restString),
            restStringIndex != signature.index(before: signature.endIndex) {
-            return .failure(LineParseError(message: "restString must be the final argument type"))
+            return .failure(LineParseError(message: String(localized: "restString must be the final argument type")))
         }
 
         return .success(signature)
@@ -217,11 +222,11 @@ struct CommandDefinitionFile {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
 
         guard parts.count <= 2 else {
-            return .failure(LineParseError(message: "Invalid repeated argument syntax"))
+            return .failure(LineParseError(message: String(localized: "Invalid repeated argument syntax")))
         }
 
         guard let type = argType(named: parts[0]) else {
-            return .failure(LineParseError(message: "Unknown argument type '\(parts[0])'"))
+            return .failure(LineParseError(message: String(format: String(localized: "Unknown argument type '%@'"), String(parts[0]))))
         }
 
         if parts.count == 1 {
@@ -229,11 +234,11 @@ struct CommandDefinitionFile {
         }
 
         guard type != .restString else {
-            return .failure(LineParseError(message: "restString cannot be repeated"))
+            return .failure(LineParseError(message: String(localized: "restString cannot be repeated")))
         }
 
         guard let repeatCount = Int(parts[1]), repeatCount > 0 else {
-            return .failure(LineParseError(message: "Repeated argument count must be a positive integer"))
+            return .failure(LineParseError(message: String(localized: "Repeated argument count must be a positive integer")))
         }
 
         return .success(Array(repeating: type, count: repeatCount))

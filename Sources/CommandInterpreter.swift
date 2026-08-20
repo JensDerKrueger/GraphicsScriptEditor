@@ -22,19 +22,19 @@ enum CommandResultCode: Int {
 extension CommandResultCode: CustomStringConvertible {
     var description: String {
         switch self {
-        case .success: return "success"
-        case .finished: return "finished"
-        case .triggerLoop: return "triggerLoop"
-        case .waitingNoop: return "waitingNoop"
-        case .fileOpenFailed: return "fileOpenFailed"
-        case .unknownCommand: return "unknownCommand"
-        case .invalidArguments: return "invalidArguments"
-        case .unmatchedRepeat: return "unmatchedRepeat"
-        case .unmatchedEndrepeat: return "unmatchedEndrepeat"
-        case .unmatchedIf: return "unmatchedIf"
-        case .unmatchedElse: return "unmatchedElse"
-        case .unmatchedEndif: return "unmatchedEndif"
-        case .callbackError: return "callbackError"
+        case .success: return String(localized: "success")
+        case .finished: return String(localized: "finished")
+        case .triggerLoop: return String(localized: "triggerLoop")
+        case .waitingNoop: return String(localized: "waitingNoop")
+        case .fileOpenFailed: return String(localized: "fileOpenFailed")
+        case .unknownCommand: return String(localized: "unknownCommand")
+        case .invalidArguments: return String(localized: "invalidArguments")
+        case .unmatchedRepeat: return String(localized: "unmatchedRepeat")
+        case .unmatchedEndrepeat: return String(localized: "unmatchedEndrepeat")
+        case .unmatchedIf: return String(localized: "unmatchedIf")
+        case .unmatchedElse: return String(localized: "unmatchedElse")
+        case .unmatchedEndif: return String(localized: "unmatchedEndif")
+        case .callbackError: return String(localized: "callbackError")
         }
     }
 }

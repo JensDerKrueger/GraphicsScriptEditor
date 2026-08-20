@@ -4,7 +4,9 @@ import AppKit
 import UniformTypeIdentifiers
 
 final class EditorModel: ObservableObject {
-    static let defaultScriptText = "# Your graphics script\nquit\n"
+    static var defaultScriptText: String {
+        "# \(String(localized: "Your graphics script"))\nquit\n"
+    }
 
     @Published var text: String = "" {
         didSet {
@@ -15,14 +17,13 @@ final class EditorModel: ObservableObject {
     @Published var diagnostics: [Diagnostic] = []
     @Published var currentFileURL: URL?
     @Published var statusMessage: String = ""
-    @Published var lastRunOutput: String = ""
     @Published var cursorLine: Int = 1
     @Published var cursorColumn: Int = 1
     @Published private(set) var hasUnsavedChanges = false
     @Published private(set) var commandNames: Set<String> = DSLCommandSet.commandNames()
 
     var documentTitle: String {
-        currentFileURL?.lastPathComponent ?? "Untitled"
+        currentFileURL?.lastPathComponent ?? String(localized: "Untitled")
     }
 
     private var pendingValidation: DispatchWorkItem?
@@ -34,6 +35,7 @@ final class EditorModel: ObservableObject {
     private var isPresentingExternalChangeAlert = false
     private var isCheckingExternalFileChange = false
     private var internalWriteSuppressionUntil: Date?
+    private var fileObservationGeneration = 0
     private var validationGeneration = 0
     private var manualCommandDefinitionURL: URL?
     private var manualCommandDefinitions: [DSLCommandSet.CommandDefinition] = []
@@ -70,8 +72,7 @@ final class EditorModel: ObservableObject {
             startMonitoringCurrentFile()
         } else {
             fileMonitorTimer?.invalidate()
-            lastKnownFileModificationDate = nil
-            ignoredExternalModificationDate = nil
+            clearObservedFileState()
         }
     }
 
@@ -86,12 +87,12 @@ final class EditorModel: ObservableObject {
 
         if let fileURL {
             RecentFilesStore.register(url: fileURL)
+            reconcileSavedStateIfNeeded(for: fileURL)
             refreshObservedFileState(for: fileURL)
             startMonitoringCurrentFile()
         } else {
             fileMonitorTimer?.invalidate()
-            lastKnownFileModificationDate = nil
-            ignoredExternalModificationDate = nil
+            clearObservedFileState()
         }
     }
 
@@ -139,12 +140,12 @@ final class EditorModel: ObservableObject {
     func correctIndentation(using indentationUnit: String) {
         let updatedText = reindentedText(text, indentationUnit: indentationUnit)
         guard updatedText != text else {
-            statusMessage = "Indentation already correct"
+            statusMessage = String(localized: "Indentation already correct")
             return
         }
 
         text = updatedText
-        statusMessage = "Corrected indentation"
+        statusMessage = String(localized: "Corrected indentation")
         scheduleValidation()
     }
 
@@ -157,8 +158,8 @@ final class EditorModel: ObservableObject {
             UTType(filenameExtension: GraphicsScriptFileType.filenameExtension) ?? GraphicsScriptFileType.contentType,
             .plainText
         ]
-        panel.title = "Open Script"
-        panel.prompt = "Open"
+        panel.title = String(localized: "Open Script")
+        panel.prompt = String(localized: "Open")
 
         if panel.runModal() == .OK, let url = panel.url {
             openFile(at: url)
@@ -174,8 +175,8 @@ final class EditorModel: ObservableObject {
             UTType(filenameExtension: CommandDefinitionFile.filenameExtension) ?? .plainText,
             .plainText
         ]
-        panel.title = "Open Command Definitions"
-        panel.prompt = "Load"
+        panel.title = String(localized: "Open Command Definitions")
+        panel.prompt = String(localized: "Load")
 
         if panel.runModal() == .OK, let url = panel.url {
             loadManualCommandDefinitions(from: url)
@@ -188,14 +189,14 @@ final class EditorModel: ObservableObject {
             currentFileURL = url
             lastSavedText = text
             hasUnsavedChanges = false
-            statusMessage = "Loaded \(url.lastPathComponent)"
+            statusMessage = String(format: String(localized: "Loaded %@"), url.lastPathComponent)
             refreshScriptCommandDefinitions()
             validateNow()
             RecentFilesStore.register(url: url)
             refreshObservedFileState(for: url)
             startMonitoringCurrentFile()
         } catch {
-            statusMessage = "Failed to load file: \(error.localizedDescription)"
+            statusMessage = String(format: String(localized: "Failed to load file: %@"), error.localizedDescription)
         }
     }
 
@@ -210,8 +211,8 @@ final class EditorModel: ObservableObject {
     @discardableResult
     func saveFileAs() -> Bool {
         let panel = NSSavePanel()
-        panel.title = "Save Script"
-        panel.prompt = "Save"
+        panel.title = String(localized: "Save Script")
+        panel.prompt = String(localized: "Save")
         panel.allowedContentTypes = [GraphicsScriptFileType.contentType]
         panel.allowsOtherFileTypes = false
         panel.nameFieldStringValue = currentFileURL?.lastPathComponent ?? "script.gsc"
@@ -228,42 +229,12 @@ final class EditorModel: ObservableObject {
         return false
     }
 
-    func runScript() {
-        guard let scriptURL = ensureSavedForRun() else {
-            return
-        }
-
-        statusMessage = "Running..."
-        lastRunOutput = ""
-
-        let runnerPath = UserDefaults.standard.string(forKey: SettingsKeys.runnerPath) ?? ""
-        let runnerURL = SecurityScopedAccess.resolvedURL(defaultsKey: SettingsKeys.runnerBookmark)
-
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = ScriptRunner.run(
-                programPath: runnerPath,
-                runnerURL: runnerURL,
-                scriptURL: scriptURL
-            )
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let output):
-                    self?.statusMessage = "Run finished"
-                    self?.lastRunOutput = output
-                case .failure(let error):
-                    self?.statusMessage = "Run failed"
-                    self?.lastRunOutput = error.localizedDescription
-                }
-            }
-        }
-
-    }
-
     func prepareForDocumentSaveAttempt() {
         suppressExternalChangeDetection()
     }
 
     func finalizeDocumentSave(fileURL: URL?) {
+        suppressExternalChangeDetection()
         lastSavedText = text
         hasUnsavedChanges = false
 
@@ -272,18 +243,10 @@ final class EditorModel: ObservableObject {
             RecentFilesStore.register(url: fileURL)
             refreshObservedFileState(for: fileURL)
             startMonitoringCurrentFile()
-            statusMessage = "Saved \(fileURL.lastPathComponent)"
+            statusMessage = String(format: String(localized: "Saved %@"), fileURL.lastPathComponent)
         } else {
-            statusMessage = "Saved"
+            statusMessage = String(localized: "Saved")
         }
-    }
-
-    private func ensureSavedForRun() -> URL? {
-        if let url = currentFileURL, !hasUnsavedChanges {
-            return url
-        }
-
-        return createTemporaryRunFile()
     }
 
     private func loadManualCommandDefinitions(from url: URL) {
@@ -294,7 +257,7 @@ final class EditorModel: ObservableObject {
             commandDefinitionDiagnostics = diagnostics(for: result.issues, sourceURL: url)
             refreshCommandNames()
             validateNow()
-            statusMessage = "Could not load \(url.lastPathComponent)"
+            statusMessage = String(format: String(localized: "Could not load %@"), url.lastPathComponent)
             return
         }
 
@@ -303,7 +266,7 @@ final class EditorModel: ObservableObject {
         commandDefinitionDiagnostics = []
         refreshCommandNames()
         validateNow()
-        statusMessage = "Loaded \(url.lastPathComponent)"
+        statusMessage = String(format: String(localized: "Loaded %@"), url.lastPathComponent)
     }
 
     private func refreshScriptCommandDefinitions() {
@@ -329,7 +292,7 @@ final class EditorModel: ObservableObject {
             commandDefinitionDiagnostics = diagnostics(for: result.issues, sourceURL: referencedURL)
             refreshCommandNames()
             validateNow()
-            statusMessage = "Could not load \(referencedURL.lastPathComponent)"
+            statusMessage = String(format: String(localized: "Could not load %@"), referencedURL.lastPathComponent)
             return
         }
 
@@ -338,7 +301,7 @@ final class EditorModel: ObservableObject {
         commandDefinitionDiagnostics = []
         refreshCommandNames()
         validateNow()
-        statusMessage = "Loaded \(referencedURL.lastPathComponent)"
+        statusMessage = String(format: String(localized: "Loaded %@"), referencedURL.lastPathComponent)
     }
 
     private func refreshCommandNames() {
@@ -450,7 +413,7 @@ final class EditorModel: ObservableObject {
         issues.map { issue in
             Diagnostic(
                 line: 1,
-                message: "\(sourceURL.lastPathComponent) line \(issue.line): \(issue.message)",
+                message: String(format: String(localized: "%@ line %lld: %@"), sourceURL.lastPathComponent, issue.line, issue.message),
                 code: .invalidArguments
             )
         }
@@ -485,6 +448,7 @@ final class EditorModel: ObservableObject {
     @discardableResult
     private func writeFile(_ url: URL, updateStatus: Bool) -> Bool {
         do {
+            suppressExternalChangeDetection()
             try text.write(to: url, atomically: true, encoding: .utf8)
             suppressExternalChangeDetection()
             lastSavedText = text
@@ -492,11 +456,11 @@ final class EditorModel: ObservableObject {
             RecentFilesStore.register(url: url)
             refreshObservedFileState(for: url)
             if updateStatus {
-                statusMessage = "Saved \(url.lastPathComponent)"
+                statusMessage = String(format: String(localized: "Saved %@"), url.lastPathComponent)
             }
             return true
         } catch {
-            statusMessage = "Failed to save file: \(error.localizedDescription)"
+            statusMessage = String(format: String(localized: "Failed to save file: %@"), error.localizedDescription)
             return false
         }
     }
@@ -522,12 +486,12 @@ final class EditorModel: ObservableObject {
         }
 
         let alert = NSAlert()
-        alert.messageText = "Do you want to save the changes made to \"\(documentTitle)\"?"
-        alert.informativeText = "Your unsaved changes will be lost if you \(actionName) without saving."
+        alert.messageText = String(format: String(localized: "Do you want to save the changes made to \"%@\"?"), documentTitle)
+        alert.informativeText = String(format: String(localized: "Your unsaved changes will be lost if you %@ without saving."), actionName)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: String(localized: "Save"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.addButton(withTitle: String(localized: "Don't Save"))
 
         switch alert.runModal() {
         case .alertFirstButtonReturn:
@@ -555,8 +519,27 @@ final class EditorModel: ObservableObject {
     }
 
     private func refreshObservedFileState(for url: URL) {
+        fileObservationGeneration += 1
         lastKnownFileModificationDate = fileModificationDate(for: url)
         ignoredExternalModificationDate = nil
+    }
+
+    private func clearObservedFileState() {
+        fileObservationGeneration += 1
+        lastKnownFileModificationDate = nil
+        ignoredExternalModificationDate = nil
+        internalWriteSuppressionUntil = nil
+    }
+
+    private func reconcileSavedStateIfNeeded(for url: URL) {
+        guard let diskText = fileContents(for: url),
+              normalizedLoadedText(diskText) == text else {
+            return
+        }
+
+        lastSavedText = text
+        hasUnsavedChanges = false
+        suppressExternalChangeDetection()
     }
 
     private func checkForExternalFileChanges() {
@@ -584,6 +567,7 @@ final class EditorModel: ObservableObject {
 
         let currentText = text
         let savedText = lastSavedText
+        let observationGeneration = fileObservationGeneration
         isCheckingExternalFileChange = true
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -597,6 +581,7 @@ final class EditorModel: ObservableObject {
                 self.isCheckingExternalFileChange = false
 
                 guard self.currentFileURL == currentFileURL,
+                      self.fileObservationGeneration == observationGeneration,
                       !self.isPresentingExternalChangeAlert else {
                     return
                 }
@@ -610,7 +595,9 @@ final class EditorModel: ObservableObject {
                     return
                 }
 
-                if diskText == currentText {
+                let normalizedDiskText = self.normalizedLoadedText(diskText)
+
+                if normalizedDiskText == currentText {
                     self.lastSavedText = currentText
                     self.hasUnsavedChanges = false
                     self.lastKnownFileModificationDate = latestModificationDate
@@ -618,7 +605,7 @@ final class EditorModel: ObservableObject {
                     return
                 }
 
-                if diskText == savedText {
+                if normalizedDiskText == savedText {
                     self.lastKnownFileModificationDate = latestModificationDate
                     self.ignoredExternalModificationDate = nil
                     return
@@ -633,13 +620,13 @@ final class EditorModel: ObservableObject {
         isPresentingExternalChangeAlert = true
 
         let alert = NSAlert()
-        alert.messageText = "\"\(url.lastPathComponent)\" changed on disk."
+        alert.messageText = String(format: String(localized: "\"%@\" changed on disk."), url.lastPathComponent)
         alert.informativeText = hasUnsavedChanges
-            ? "The file was modified by another program. Reloading will discard your unsaved changes."
-            : "The file was modified by another program. Do you want to reload it?"
+            ? String(localized: "The file was modified by another program. Reloading will discard your unsaved changes.")
+            : String(localized: "The file was modified by another program. Do you want to reload it?")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Reload")
-        alert.addButton(withTitle: "Ignore")
+        alert.addButton(withTitle: String(localized: "Reload"))
+        alert.addButton(withTitle: String(localized: "Ignore"))
 
         let response = alert.runModal()
         isPresentingExternalChangeAlert = false
@@ -649,7 +636,7 @@ final class EditorModel: ObservableObject {
         } else {
             ignoredExternalModificationDate = modificationDate
             lastKnownFileModificationDate = modificationDate
-            statusMessage = "Ignored external change to \(url.lastPathComponent)"
+            statusMessage = String(format: String(localized: "Ignored external change to %@"), url.lastPathComponent)
         }
     }
 
@@ -662,33 +649,8 @@ final class EditorModel: ObservableObject {
     }
 
     private func suppressExternalChangeDetection() {
+        fileObservationGeneration += 1
         internalWriteSuppressionUntil = Date().addingTimeInterval(2.0)
-    }
-
-    private func createTemporaryRunFile() -> URL? {
-        let temporaryDirectoryURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("GraphicsScriptEditorRuns", isDirectory: true)
-
-        do {
-            try FileManager.default.createDirectory(
-                at: temporaryDirectoryURL,
-                withIntermediateDirectories: true
-            )
-
-            let baseName = currentFileURL?.deletingPathExtension().lastPathComponent ?? "script"
-            let temporaryFileURL = temporaryDirectoryURL
-                .appendingPathComponent("\(baseName)-\(UUID().uuidString)")
-                .appendingPathExtension(GraphicsScriptFileType.filenameExtension)
-
-            try text.write(to: temporaryFileURL, atomically: true, encoding: .utf8)
-            statusMessage = currentFileURL == nil
-                ? "Running unsaved script"
-                : "Running unsaved changes from temporary copy"
-            return temporaryFileURL
-        } catch {
-            statusMessage = "Failed to prepare script for run: \(error.localizedDescription)"
-            return nil
-        }
     }
 
     private var isErrorCheckingEnabled: Bool {

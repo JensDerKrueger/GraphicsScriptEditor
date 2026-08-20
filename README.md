@@ -1,10 +1,10 @@
 # Graphics Script Editor
 
-Native macOS editor for `Graphics Script` files with live validation, structure-aware indentation, and one-click execution.
+Native macOS editor for `Graphics Script` files with live validation and structure-aware indentation.
 
 ## Overview
 
-`Graphics Script Editor` is a dedicated script editor for `.gsc` files. It is used to write scripts for the application presented in the paper *"Reassessing Quality, Performance, and Reproducibility of Higher-Order Filtering and Virtual Samples in Volume Rendering"*. The editor is built for the workflow of writing, checking, and running those graphics scripts quickly, without forcing that work into a general-purpose text editor.
+`Graphics Script Editor` is a dedicated script editor for `.gsc` files. It is used to write scripts for the application presented in the paper *"Reassessing Quality, Performance, and Reproducibility of Higher-Order Filtering and Virtual Samples in Volume Rendering"*. The editor is built for the workflow of writing and checking those graphics scripts quickly, without forcing that work into a general-purpose text editor.
 
 The app combines a native editing experience with just enough IDE behavior to be useful:
 
@@ -12,7 +12,6 @@ The app combines a native editing experience with just enough IDE behavior to be
 - script-aware indentation
 - smart block pasting
 - configurable appearance
-- direct runner integration
 
 ## Features
 
@@ -68,18 +67,6 @@ first script comment:
 Relative paths are resolved next to the script file. The sample volume-renderer
 definitions live in `CommandDefinitions/volume-renderer.gsccommands`.
 
-### Execution
-
-- Configure an external runner executable in Settings
-- Run the current script directly from the editor
-- Captures and displays combined standard output and error output
-
-The runner is invoked as:
-
-```bash
-<runner> --script <file>
-```
-
 ### macOS Integration
 
 - Registers `.gsc` as a dedicated document type
@@ -104,17 +91,13 @@ The project exports this Uniform Type Identifier:
 
 1. Open `GraphicsScriptEditor.xcodeproj` in Xcode.
 2. Build and run the `Graphics Script Editor` target.
-3. Open `Settings`.
-4. Choose the external runner executable you want the app to use.
-5. Open or create a `.gsc` file and start editing.
+3. Open or create a `.gsc` file and start editing.
 
 ## Typical Workflow
 
 1. Double-click a `.gsc` file in Finder or open one from inside the app.
 2. Edit the script with live syntax highlighting and diagnostics.
 3. Use the built-in indentation support to keep block structure clean.
-4. Run the script through your configured external executable.
-5. Inspect output directly inside the editor.
 
 ## Screenshots
 
