@@ -1,16 +1,26 @@
 # Graphics Script Editor
 
-Native macOS editor for `Graphics Script` files with live validation and structure-aware indentation.
+Native macOS editor for `Graphics Script` files with live syntax highlighting,
+validation, and structure-aware indentation.
 
 ## Overview
 
-`Graphics Script Editor` is a dedicated script editor for `.gsc` files. It is used to write scripts for the application presented in the paper *"Reassessing Quality, Performance, and Reproducibility of Higher-Order Filtering and Virtual Samples in Volume Rendering"*. The editor is built for the workflow of writing and checking those graphics scripts quickly, without forcing that work into a general-purpose text editor.
+`Graphics Script Editor` is a dedicated, reusable editor for `.gsc` files. It
+knows the shared graphics-script DSL and can be extended with command definitions
+for each tool that uses the format. It was originally developed for the
+application presented in the paper *"Reassessing Quality, Performance, and
+Reproducibility of Higher-Order Filtering and Virtual Samples in Volume
+Rendering"*.
+
+The editor is built for writing and checking graphics scripts quickly, without
+forcing that work into a general-purpose text editor.
 
 The app combines a native editing experience with just enough IDE behavior to be useful:
 
-- live syntax diagnostics
+- live syntax highlighting and diagnostics
 - script-aware indentation
 - smart block pasting
+- tool-specific command and function definitions
 - configurable appearance
 
 ## Features
@@ -39,7 +49,8 @@ The app combines a native editing experience with just enough IDE behavior to be
 - Live syntax checking while editing
 - Diagnostics with line-numbered error reporting
 - Validation powered by the built-in command interpreter in validation mode
-- Optional external command definition files for application-specific commands
+- External command definitions are applied immediately to validation and syntax
+  highlighting
 
 ### Command Definitions
 
@@ -77,8 +88,14 @@ set directory dirinput "Select a directory"
 Single- and double-quoted script arguments can contain whitespace. Function
 overloads are declared by repeating the function name with another signature.
 
-Load a definition file with the `Commands` toolbar button, or put a path in the
-first script comment:
+Definitions loaded manually and definitions referenced by the current script are
+combined. Loading a definition file or changing the reference in the script
+updates validation and syntax highlighting immediately; reopening the script is
+not required.
+
+Load a definition file with the `Commands` toolbar button or the corresponding
+menu command. To load definitions automatically, put their path in the first
+comment found in the script:
 
 ```text
 # CommandDefinitions/volume-renderer.gsccommands
@@ -86,8 +103,11 @@ first script comment:
 
 Relative paths are resolved next to the script file. The sample volume-renderer
 definitions live in `CommandDefinitions/volume-renderer.gsccommands`. In a
-sandboxed build, the editor asks for access with a file dialog already pointed
-at the referenced definition file and remembers the approval for future use.
+sandboxed build, the editor first explains why access is needed and then opens a
+dedicated command-definition dialog already pointed at the referenced file. The
+user may decline; in that case the definitions cannot be loaded and otherwise
+valid tool-specific commands may be reported as errors. Granted access is
+remembered for future use.
 
 ### macOS Integration
 
@@ -106,8 +126,8 @@ The project exports this Uniform Type Identifier:
 
 ## Build Requirements
 
-- macOS 13+
-- Xcode 16+ recommended
+- macOS 15+
+- Xcode 16 or newer
 
 ## Getting Started
 
@@ -118,8 +138,10 @@ The project exports this Uniform Type Identifier:
 ## Typical Workflow
 
 1. Double-click a `.gsc` file in Finder or open one from inside the app.
-2. Edit the script with live syntax highlighting and diagnostics.
-3. Use the built-in indentation support to keep block structure clean.
+2. Load a `.gsccommands` file manually or reference it in the script's first
+   comment when the target tool adds commands to the base DSL.
+3. Edit the script with live syntax highlighting and diagnostics.
+4. Use the built-in indentation support to keep block structure clean.
 
 ## Screenshots
 
