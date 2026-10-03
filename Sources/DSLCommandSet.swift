@@ -9,6 +9,13 @@ struct DSLCommandSet {
     struct CommandDefinition {
         let name: String
         let signatures: [[ArgType]]
+        let returnType: ArgType?
+
+        init(name: String, signatures: [[ArgType]], returnType: ArgType? = nil) {
+            self.name = name
+            self.signatures = signatures
+            self.returnType = returnType
+        }
     }
 
     static let builtInCommands: Set<String> = [
@@ -49,7 +56,11 @@ struct DSLCommandSet {
                             extraDefinitions: [CommandDefinition] = []) {
         for def in definitions + extraDefinitions {
             for signature in def.signatures {
-                interpreter.registerCommand(def.name, signature)
+                if let returnType = def.returnType {
+                    interpreter.registerValueFunction(def.name, signature, returning: returnType)
+                } else {
+                    interpreter.registerCommand(def.name, signature)
+                }
             }
         }
     }
@@ -60,6 +71,12 @@ struct DSLCommandSet {
             names.insert(def.name)
         }
         return names
+    }
+
+    static func valueFunctionNames(extraDefinitions: [CommandDefinition] = []) -> Set<String> {
+        Set(extraDefinitions.compactMap { definition in
+            definition.returnType == nil ? nil : definition.name
+        })
     }
 
     static var blockOpeningCommands: Set<String> {
@@ -81,9 +98,21 @@ struct CommandDefinitionFile {
         let message: String
     }
 
+    private struct ParsedDefinition {
+        let name: String
+        let signature: [ArgType]
+        let returnType: ArgType?
+    }
+
+    private struct DefinitionKey: Hashable {
+        let name: String
+        let returnType: ArgType?
+    }
+
     struct ParseResult {
         let definitions: [DSLCommandSet.CommandDefinition]
         let issues: [ParseIssue]
+        let sourceReadFailed: Bool
     }
 
     static let filenameExtension = "gsccommands"
@@ -102,14 +131,15 @@ struct CommandDefinitionFile {
                         line: 1,
                         message: String(format: String(localized: "Could not read command definitions: %@"), error.localizedDescription)
                     )
-                ]
+                ],
+                sourceReadFailed: true
             )
         }
     }
 
     static func parse(_ text: String) -> ParseResult {
-        var definitionsByName: [String: [[ArgType]]] = [:]
-        var order: [String] = []
+        var definitionsByKey: [DefinitionKey: [[ArgType]]] = [:]
+        var order: [DefinitionKey] = []
         var issues: [ParseIssue] = []
 
         for (index, rawLine) in text.components(separatedBy: .newlines).enumerated() {
@@ -123,24 +153,29 @@ struct CommandDefinitionFile {
 
             switch parseDefinition(line) {
             case .success(let parsed):
-                if definitionsByName[parsed.name] == nil {
-                    definitionsByName[parsed.name] = []
-                    order.append(parsed.name)
+                let key = DefinitionKey(name: parsed.name, returnType: parsed.returnType)
+                if definitionsByKey[key] == nil {
+                    definitionsByKey[key] = []
+                    order.append(key)
                 }
-                definitionsByName[parsed.name]?.append(parsed.signature)
+                definitionsByKey[key]?.append(parsed.signature)
             case .failure(let error):
                 issues.append(ParseIssue(line: lineNumber, message: error.message))
             }
         }
 
-        let definitions = order.compactMap { name -> DSLCommandSet.CommandDefinition? in
-            guard let signatures = definitionsByName[name] else {
+        let definitions = order.compactMap { key -> DSLCommandSet.CommandDefinition? in
+            guard let signatures = definitionsByKey[key] else {
                 return nil
             }
-            return DSLCommandSet.CommandDefinition(name: name, signatures: signatures)
+            return DSLCommandSet.CommandDefinition(
+                name: key.name,
+                signatures: signatures,
+                returnType: key.returnType
+            )
         }
 
-        return ParseResult(definitions: definitions, issues: issues)
+        return ParseResult(definitions: definitions, issues: issues, sourceReadFailed: false)
     }
 
     private static func stripComment(from line: String) -> String {
@@ -150,39 +185,80 @@ struct CommandDefinitionFile {
         return String(line[..<hashIndex])
     }
 
-    private static func parseDefinition(_ line: String) -> Result<(name: String, signature: [ArgType]), LineParseError> {
-        guard let openParen = line.firstIndex(of: "(") else {
-            return parseWhitespaceDefinition(line)
+    private static func parseDefinition(_ line: String) -> Result<ParsedDefinition, LineParseError> {
+        let returnParts = line.components(separatedBy: "->")
+        guard returnParts.count <= 2 else {
+            return .failure(LineParseError(message: String(localized: "Invalid return type syntax")))
         }
 
-        guard line.hasSuffix(")") else {
+        let declaration = returnParts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+        let returnTypeResult = parseReturnType(returnParts.count == 2 ? returnParts[1] : nil)
+        let returnType: ArgType?
+        switch returnTypeResult {
+        case .success(let parsedReturnType):
+            returnType = parsedReturnType
+        case .failure(let error):
+            return .failure(error)
+        }
+
+        guard let openParen = declaration.firstIndex(of: "(") else {
+            return parseWhitespaceDefinition(declaration, returnType: returnType)
+        }
+
+        guard declaration.hasSuffix(")") else {
             return .failure(LineParseError(message: String(localized: "Expected closing ')' in command definition")))
         }
 
-        let name = line[..<openParen].trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = declaration[..<openParen].trimmingCharacters(in: .whitespacesAndNewlines)
         guard isValidCommandName(name) else {
             return .failure(LineParseError(message: String(localized: "Invalid command name")))
         }
 
-        let argsStart = line.index(after: openParen)
-        let argsEnd = line.index(before: line.endIndex)
-        let args = String(line[argsStart..<argsEnd])
+        let argsStart = declaration.index(after: openParen)
+        let argsEnd = declaration.index(before: declaration.endIndex)
+        let args = String(declaration[argsStart..<argsEnd])
 
-        return parseSignature(args).map { (name, $0) }
+        return parseSignature(args).map {
+            ParsedDefinition(name: name, signature: $0, returnType: returnType)
+        }
     }
 
-    private static func parseWhitespaceDefinition(_ line: String) -> Result<(name: String, signature: [ArgType]), LineParseError> {
+    private static func parseWhitespaceDefinition(_ line: String,
+                                                  returnType: ArgType?) -> Result<ParsedDefinition, LineParseError> {
         let parts = line.split(whereSeparator: \.isWhitespace).map(String.init)
         guard let name = parts.first, isValidCommandName(name) else {
             return .failure(LineParseError(message: String(localized: "Invalid command name")))
         }
 
         guard parts.count > 1 else {
-            return .success((name, []))
+            return .success(ParsedDefinition(name: name, signature: [], returnType: returnType))
         }
 
         let args = parts.dropFirst().joined(separator: ",")
-        return parseSignature(args).map { (name, $0) }
+        return parseSignature(args).map {
+            ParsedDefinition(name: name, signature: $0, returnType: returnType)
+        }
+    }
+
+    private static func parseReturnType(_ rawReturnType: String?) -> Result<ArgType?, LineParseError> {
+        guard let rawReturnType else {
+            return .success(nil)
+        }
+
+        let name = rawReturnType.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            return .failure(LineParseError(message: String(localized: "Expected return type after '->'")))
+        }
+
+        guard let returnType = argType(named: name), returnType != .restString else {
+            return .failure(
+                LineParseError(
+                    message: String(format: String(localized: "Unknown return type '%@'"), name)
+                )
+            )
+        }
+
+        return .success(returnType)
     }
 
     private static func parseSignature(_ text: String) -> Result<[ArgType], LineParseError> {

@@ -51,11 +51,31 @@ file. Each non-empty line defines one signature:
 commandName(type, type)
 commandWithNoArguments()
 matrixCommand(float * 16)
+input(string) -> string
 ```
 
 Supported argument types are `int`, `int64`, `uint32`, `bool`, `float`,
 `double`, `string`, and `restString`. Use repeated lines for overloads. Lines
-can contain `#` comments.
+can contain `#` comments. A definition without `->` is an ordinary command.
+A definition with `-> returnType` is a value-returning function that can be
+used on the right-hand side of `set`:
+
+```text
+input(string) -> string
+fileinput(string) -> string
+dirinput(string) -> string
+```
+
+With those definitions loaded, these script lines are valid:
+
+```text
+set name input "Enter your name"
+set file fileinput "Select a file"
+set directory dirinput "Select a directory"
+```
+
+Single- and double-quoted script arguments can contain whitespace. Function
+overloads are declared by repeating the function name with another signature.
 
 Load a definition file with the `Commands` toolbar button, or put a path in the
 first script comment:
@@ -65,7 +85,9 @@ first script comment:
 ```
 
 Relative paths are resolved next to the script file. The sample volume-renderer
-definitions live in `CommandDefinitions/volume-renderer.gsccommands`.
+definitions live in `CommandDefinitions/volume-renderer.gsccommands`. In a
+sandboxed build, the editor asks for access with a file dialog already pointed
+at the referenced definition file and remembers the approval for future use.
 
 ### macOS Integration
 

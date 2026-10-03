@@ -41,7 +41,7 @@ final class SyntaxHighlighter {
         let commentRange: NSRange?
         let numberRanges: [NSRange]
         let variableReferences: [VariableReference]
-        let keywordRange: NSRange?
+        let keywordRanges: [NSRange]
         let variableEffect: LineVariableEffect?
     }
 
@@ -54,16 +54,22 @@ final class SyntaxHighlighter {
     private let cacheLock = NSLock()
     private var cachedLineAnalysesByText: [String: CachedLineAnalysis] = [:]
     private var cachedCommandNames: Set<String>?
+    private var cachedValueFunctionNames: Set<String>?
 
     func makePlan(
         for text: String,
         commandNames: Set<String>,
+        valueFunctionNames: Set<String>,
         diagnostics: [Diagnostic]
     ) -> HighlightPlan {
         let fullText = text as NSString
         let fullRange = NSRange(location: 0, length: fullText.length)
         let documentLines = documentLines(in: fullText, range: fullRange)
-        let lineAnalyses = cachedAnalyses(for: documentLines, commandNames: commandNames)
+        let lineAnalyses = cachedAnalyses(
+            for: documentLines,
+            commandNames: commandNames,
+            valueFunctionNames: valueFunctionNames
+        )
         let diagnosticLines = Set(diagnostics.map(\.line))
 
         var commentRanges: [NSRange] = []
@@ -81,7 +87,7 @@ final class SyntaxHighlighter {
                 commentRanges.append(absoluteRange(from: commentRange, lineRange: line.range))
             }
 
-            if let keywordRange = analysis.keywordRange {
+            for keywordRange in analysis.keywordRanges {
                 keywordRanges.append(absoluteRange(from: keywordRange, lineRange: line.range))
             }
 
@@ -174,11 +180,14 @@ final class SyntaxHighlighter {
         return lines
     }
 
-    private func cachedAnalyses(for documentLines: [DocumentLine], commandNames: Set<String>) -> [CachedLineAnalysis] {
+    private func cachedAnalyses(for documentLines: [DocumentLine],
+                                commandNames: Set<String>,
+                                valueFunctionNames: Set<String>) -> [CachedLineAnalysis] {
         cacheLock.lock()
-        if cachedCommandNames != commandNames {
+        if cachedCommandNames != commandNames || cachedValueFunctionNames != valueFunctionNames {
             cachedLineAnalysesByText.removeAll()
             cachedCommandNames = commandNames
+            cachedValueFunctionNames = valueFunctionNames
         }
         let cachedAnalysesByText = cachedLineAnalysesByText
         cacheLock.unlock()
@@ -189,13 +198,17 @@ final class SyntaxHighlighter {
                 return cachedAnalysis
             }
 
-            let analysis = analyze(line, commandNames: commandNames)
+            let analysis = analyze(
+                line,
+                commandNames: commandNames,
+                valueFunctionNames: valueFunctionNames
+            )
             updatedCache[line.text] = analysis
             return analysis
         }
 
         cacheLock.lock()
-        if cachedCommandNames == commandNames {
+        if cachedCommandNames == commandNames && cachedValueFunctionNames == valueFunctionNames {
             cachedLineAnalysesByText = updatedCache
         }
         cacheLock.unlock()
@@ -203,18 +216,24 @@ final class SyntaxHighlighter {
         return resolvedAnalyses
     }
 
-    private func analyze(_ line: DocumentLine, commandNames: Set<String>) -> CachedLineAnalysis {
+    private func analyze(_ line: DocumentLine,
+                         commandNames: Set<String>,
+                         valueFunctionNames: Set<String>) -> CachedLineAnalysis {
         let lineNSString = line.text as NSString
         var codeRangeLength = line.range.length
-        let commentRangeInLine = lineNSString.range(of: "#")
         var commentRange: NSRange?
 
-        if commentRangeInLine.location != NSNotFound {
-            codeRangeLength = commentRangeInLine.location
-            commentRange = NSRange(location: commentRangeInLine.location, length: line.range.length - commentRangeInLine.location)
+        if let commentStart = commentStartLocation(in: lineNSString) {
+            codeRangeLength = commentStart
+            commentRange = NSRange(location: commentStart, length: line.range.length - commentStart)
         }
 
-        let keywordRange = leadingCommandRange(in: lineNSString, codeRangeLength: codeRangeLength)
+        let commandRange = leadingCommandRange(in: lineNSString, codeRangeLength: codeRangeLength)
+        let valueFunctionRange = setValueFunctionRange(
+            in: lineNSString,
+            codeRangeLength: codeRangeLength,
+            valueFunctionNames: valueFunctionNames
+        )
         let codeText = codeRangeLength > 0
             ? lineNSString.substring(with: NSRange(location: 0, length: codeRangeLength))
             : ""
@@ -228,10 +247,12 @@ final class SyntaxHighlighter {
                 commentRange: commentRange,
                 numberRanges: [],
                 variableReferences: [],
-                keywordRange: keywordRange.flatMap { localRange in
-                    let token = lineNSString.substring(with: localRange)
-                    return commandNames.contains(token) ? localRange : nil
-                },
+                keywordRanges: resolvedKeywordRanges(
+                    commandRange: commandRange,
+                    valueFunctionRange: valueFunctionRange,
+                    in: lineNSString,
+                    commandNames: commandNames
+                ),
                 variableEffect: variableEffect
             )
         }
@@ -246,19 +267,80 @@ final class SyntaxHighlighter {
         }
 
         let variableReferences = variableReferences(in: codeText)
-        let resolvedKeywordRange = keywordRange.flatMap { localRange in
-            let token = lineNSString.substring(with: localRange)
-            return commandNames.contains(token) ? localRange : nil
-        }
-
         return CachedLineAnalysis(
             text: line.text,
             commentRange: commentRange,
             numberRanges: numberRanges,
             variableReferences: variableReferences,
-            keywordRange: resolvedKeywordRange,
+            keywordRanges: resolvedKeywordRanges(
+                commandRange: commandRange,
+                valueFunctionRange: valueFunctionRange,
+                in: lineNSString,
+                commandNames: commandNames
+            ),
             variableEffect: variableEffect
         )
+    }
+
+    private func resolvedKeywordRanges(commandRange: NSRange?,
+                                       valueFunctionRange: NSRange?,
+                                       in line: NSString,
+                                       commandNames: Set<String>) -> [NSRange] {
+        var ranges: [NSRange] = []
+
+        if let commandRange,
+           commandNames.contains(line.substring(with: commandRange)) {
+            ranges.append(commandRange)
+        }
+        if let valueFunctionRange {
+            ranges.append(valueFunctionRange)
+        }
+
+        return ranges
+    }
+
+    private func commentStartLocation(in line: NSString) -> Int? {
+        var quote: UInt16?
+        var isEscaping = false
+
+        for index in 0..<line.length {
+            let character = line.character(at: index)
+
+            if isEscaping {
+                isEscaping = false
+                continue
+            }
+
+            if let activeQuote = quote {
+                if character == 92 {
+                    isEscaping = true
+                } else if character == activeQuote {
+                    quote = nil
+                }
+                continue
+            }
+
+            if character == 34 || character == 39 {
+                quote = character
+            } else if character == 35 {
+                return index
+            }
+        }
+
+        return nil
+    }
+
+    private func setValueFunctionRange(in line: NSString,
+                                       codeRangeLength: Int,
+                                       valueFunctionNames: Set<String>) -> NSRange? {
+        let tokenRanges = leadingTokenRanges(in: line, codeRangeLength: codeRangeLength, limit: 3)
+        guard tokenRanges.count == 3,
+              line.substring(with: tokenRanges[0]) == "set",
+              valueFunctionNames.contains(line.substring(with: tokenRanges[2])) else {
+            return nil
+        }
+
+        return tokenRanges[2]
     }
 
     private func variableReferences(in text: String) -> [VariableReference] {
@@ -290,30 +372,44 @@ final class SyntaxHighlighter {
     }
 
     private func leadingCommandRange(in line: NSString, codeRangeLength: Int) -> NSRange? {
+        leadingTokenRanges(in: line, codeRangeLength: codeRangeLength, limit: 1).first
+    }
+
+    private func leadingTokenRanges(in line: NSString,
+                                    codeRangeLength: Int,
+                                    limit: Int) -> [NSRange] {
+        guard limit > 0 else {
+            return []
+        }
+
         let whitespace = CharacterSet.whitespacesAndNewlines
-        var startIndex = 0
-        while startIndex < codeRangeLength {
-            if let scalar = UnicodeScalar(line.character(at: startIndex)),
-               !whitespace.contains(scalar) {
+        var ranges: [NSRange] = []
+        var index = 0
+
+        while index < codeRangeLength, ranges.count < limit {
+            while index < codeRangeLength,
+                  let scalar = UnicodeScalar(line.character(at: index)),
+                  whitespace.contains(scalar) {
+                index += 1
+            }
+
+            guard index < codeRangeLength else {
                 break
             }
-            startIndex += 1
-        }
 
-        guard startIndex < codeRangeLength else {
-            return nil
-        }
-
-        var endIndex = startIndex
-        while endIndex < codeRangeLength {
-            if let scalar = UnicodeScalar(line.character(at: endIndex)),
-               whitespace.contains(scalar) {
-                break
+            let startIndex = index
+            while index < codeRangeLength {
+                guard let scalar = UnicodeScalar(line.character(at: index)),
+                      !whitespace.contains(scalar) else {
+                    break
+                }
+                index += 1
             }
-            endIndex += 1
+
+            ranges.append(NSRange(location: startIndex, length: index - startIndex))
         }
 
-        return NSRange(location: startIndex, length: endIndex - startIndex)
+        return ranges
     }
 
     private func variableEffect(for codeText: String) -> LineVariableEffect? {

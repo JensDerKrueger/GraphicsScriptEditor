@@ -9,11 +9,14 @@
 "Close" = "Schließen";
 "Commands" = "Befehle";
 "Comments" = "Kommentare";
+"Command Definitions Require Access" = "Zugriff auf Befehlsdefinitionen erforderlich";
 "Correct Indentation" = "Einrückung korrigieren";
 "Corrected indentation" = "Einrückung korrigiert";
+"Continue" = "Fortfahren";
 "Could not load %@" = "%@ konnte nicht geladen werden";
 "Do you want to save the changes made to \"%@\"?" = "Möchtest du die Änderungen an \"%@\" speichern?";
 "Don't Save" = "Nicht speichern";
+"Don't Load" = "Nicht laden";
 "Editor Colors" = "Editorfarben";
 "Editor Font" = "Editorschrift";
 "Enable Autosave" = "Automatisches Speichern aktivieren";
@@ -65,6 +68,8 @@
 "The file was modified by another program. Do you want to reload it?" = "Die Datei wurde von einem anderen Programm geändert. Möchtest du sie neu laden?";
 "The file was modified by another program. Reloading will discard your unsaved changes." = "Die Datei wurde von einem anderen Programm geändert. Beim Neuladen gehen deine ungespeicherten Änderungen verloren.";
 "These colors are applied live to the editor syntax highlighting." = "Diese Farben werden direkt auf das Syntax-Highlighting des Editors angewendet.";
+"The script references %@. Select this command definition file to load it." = "Das Skript verweist auf %@. Wähle diese Befehlsdefinitionsdatei aus, um sie zu laden.";
+"The script references %@. Because the app runs in the macOS sandbox, select this file in the next dialog to allow the editor to load its command definitions. You can decline, but the definition file will not be loaded and commands defined in it may be incorrectly reported as errors." = "Das Skript verweist auf %@. Da die App in der macOS-Sandbox ausgeführt wird, wähle diese Datei im nächsten Dialog aus, damit der Editor ihre Befehlsdefinitionen laden kann. Du kannst das ablehnen; dann wird die Definitionsdatei jedoch nicht geladen und die darin definierten Befehle können fälschlicherweise als fehlerhaft angezeigt werden.";
 "triggerLoop" = "Schleifen-Neustart angefordert";
 "unknownCommand" = "Unbekannter Befehl";
 "Unknown argument type '%@'" = "Unbekannter Argumenttyp '%@'";
@@ -94,3 +99,6 @@
 "Invalid command name" = "Ungültiger Befehlsname";
 "invalidArguments" = "Ungültige Argumente";
 "Invalid repeated argument syntax" = "Ungültige Syntax für wiederholte Argumente";
+"Invalid return type syntax" = "Ungültige Syntax für Rückgabetypen";
+"Expected return type after '->'" = "Rückgabetyp nach '->' erwartet";
+"Unknown return type '%@'" = "Unbekannter Rückgabetyp '%@'";

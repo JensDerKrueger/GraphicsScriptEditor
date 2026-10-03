@@ -9,11 +9,14 @@
 "Close" = "Close";
 "Commands" = "Commands";
 "Comments" = "Comments";
+"Command Definitions Require Access" = "Command Definitions Require Access";
 "Correct Indentation" = "Correct Indentation";
 "Corrected indentation" = "Corrected indentation";
+"Continue" = "Continue";
 "Could not load %@" = "Could not load %@";
 "Do you want to save the changes made to \"%@\"?" = "Do you want to save the changes made to \"%@\"?";
 "Don't Save" = "Don't Save";
+"Don't Load" = "Don't Load";
 "Editor Colors" = "Editor Colors";
 "Editor Font" = "Editor Font";
 "Enable Autosave" = "Enable Autosave";
@@ -65,6 +68,8 @@
 "The file was modified by another program. Do you want to reload it?" = "The file was modified by another program. Do you want to reload it?";
 "The file was modified by another program. Reloading will discard your unsaved changes." = "The file was modified by another program. Reloading will discard your unsaved changes.";
 "These colors are applied live to the editor syntax highlighting." = "These colors are applied live to the editor syntax highlighting.";
+"The script references %@. Select this command definition file to load it." = "The script references %@. Select this command definition file to load it.";
+"The script references %@. Because the app runs in the macOS sandbox, select this file in the next dialog to allow the editor to load its command definitions. You can decline, but the definition file will not be loaded and commands defined in it may be incorrectly reported as errors." = "The script references %@. Because the app runs in the macOS sandbox, select this file in the next dialog to allow the editor to load its command definitions. You can decline, but the definition file will not be loaded and commands defined in it may be incorrectly reported as errors.";
 "triggerLoop" = "Loop restart requested";
 "unknownCommand" = "Unknown command";
 "Unknown argument type '%@'" = "Unknown argument type '%@'";
@@ -94,3 +99,6 @@
 "Invalid command name" = "Invalid command name";
 "invalidArguments" = "Invalid arguments";
 "Invalid repeated argument syntax" = "Invalid repeated argument syntax";
+"Invalid return type syntax" = "Invalid return type syntax";
+"Expected return type after '->'" = "Expected return type after '->'";
+"Unknown return type '%@'" = "Unknown return type '%@'";

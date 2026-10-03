@@ -231,6 +231,7 @@ struct EditorTextView: NSViewRepresentable {
     @Binding var text: String
     let diagnostics: [Diagnostic]
     let commandNames: Set<String>
+    let valueFunctionNames: Set<String>
     let fontName: String
     let fontSize: CGFloat
     let showsLineNumbers: Bool
@@ -314,6 +315,7 @@ struct EditorTextView: NSViewRepresentable {
         context.coordinator.reportSelection(in: textView)
         context.coordinator.applyHighlighting(
             commandNames: commandNames,
+            valueFunctionNames: valueFunctionNames,
             diagnostics: diagnostics,
             font: resolvedEditorFont,
             colors: resolvedThemeColors
@@ -346,6 +348,7 @@ struct EditorTextView: NSViewRepresentable {
             nsView.updateGutter(font: resolvedEditorFont)
             context.coordinator.scheduleHighlighting(
                 commandNames: commandNames,
+                valueFunctionNames: valueFunctionNames,
                 diagnostics: diagnostics,
                 font: resolvedEditorFont,
                 colors: resolvedThemeColors
@@ -354,6 +357,7 @@ struct EditorTextView: NSViewRepresentable {
         } else {
             context.coordinator.scheduleHighlighting(
                 commandNames: commandNames,
+                valueFunctionNames: valueFunctionNames,
                 diagnostics: diagnostics,
                 font: resolvedEditorFont,
                 colors: resolvedThemeColors
@@ -423,6 +427,7 @@ struct EditorTextView: NSViewRepresentable {
             containerView?.updateGutter(font: parent.resolvedEditorFont)
             scheduleHighlighting(
                 commandNames: parent.commandNames,
+                valueFunctionNames: parent.valueFunctionNames,
                 diagnostics: parent.diagnostics,
                 font: parent.resolvedEditorFont,
                 colors: parent.resolvedThemeColors
@@ -438,11 +443,16 @@ struct EditorTextView: NSViewRepresentable {
             reportSelection(in: textView)
         }
 
-        func applyHighlighting(commandNames: Set<String>, diagnostics: [Diagnostic], font: NSFont, colors: SyntaxThemeColors) {
+        func applyHighlighting(commandNames: Set<String>,
+                               valueFunctionNames: Set<String>,
+                               diagnostics: [Diagnostic],
+                               font: NSFont,
+                               colors: SyntaxThemeColors) {
             guard let textView = textView else { return }
             let plan = highlighter.makePlan(
                 for: textView.string,
                 commandNames: commandNames,
+                valueFunctionNames: valueFunctionNames,
                 diagnostics: diagnostics
             )
             highlighter.apply(
@@ -453,7 +463,11 @@ struct EditorTextView: NSViewRepresentable {
             )
         }
 
-        func scheduleHighlighting(commandNames: Set<String>, diagnostics: [Diagnostic], font: NSFont, colors: SyntaxThemeColors) {
+        func scheduleHighlighting(commandNames: Set<String>,
+                                  valueFunctionNames: Set<String>,
+                                  diagnostics: [Diagnostic],
+                                  font: NSFont,
+                                  colors: SyntaxThemeColors) {
             pendingHighlightWorkItem?.cancel()
             guard let textView else { return }
 
@@ -468,6 +482,7 @@ struct EditorTextView: NSViewRepresentable {
                 let plan = self.highlighter.makePlan(
                     for: textSnapshot,
                     commandNames: commandNames,
+                    valueFunctionNames: valueFunctionNames,
                     diagnostics: diagnostics
                 )
 
@@ -789,6 +804,7 @@ struct EditorTextView: NSViewRepresentable {
             containerView?.updateGutter(font: parent.resolvedEditorFont)
             scheduleHighlighting(
                 commandNames: parent.commandNames,
+                valueFunctionNames: parent.valueFunctionNames,
                 diagnostics: parent.diagnostics,
                 font: parent.resolvedEditorFont,
                 colors: parent.resolvedThemeColors

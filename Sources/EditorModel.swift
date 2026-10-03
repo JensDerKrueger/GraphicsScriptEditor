@@ -21,6 +21,7 @@ final class EditorModel: ObservableObject {
     @Published var cursorColumn: Int = 1
     @Published private(set) var hasUnsavedChanges = false
     @Published private(set) var commandNames: Set<String> = DSLCommandSet.commandNames()
+    @Published private(set) var valueFunctionNames: Set<String> = []
 
     var documentTitle: String {
         currentFileURL?.lastPathComponent ?? String(localized: "Untitled")
@@ -42,6 +43,8 @@ final class EditorModel: ObservableObject {
     private var scriptCommandDefinitionURL: URL?
     private var scriptCommandDefinitions: [DSLCommandSet.CommandDefinition] = []
     private var commandDefinitionDiagnostics: [Diagnostic] = []
+    private var commandDefinitionAccessPanel: NSOpenPanel?
+    private var promptedCommandDefinitionURL: URL?
 
     init(initialText: String = EditorModel.defaultScriptText, initialFileURL: URL? = nil) {
         text = initialText
@@ -167,16 +170,7 @@ final class EditorModel: ObservableObject {
     }
 
     func loadCommandDefinitionsFromPanel() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [
-            UTType(filenameExtension: CommandDefinitionFile.filenameExtension) ?? .plainText,
-            .plainText
-        ]
-        panel.title = String(localized: "Open Command Definitions")
-        panel.prompt = String(localized: "Load")
+        let panel = makeCommandDefinitionOpenPanel()
 
         if panel.runModal() == .OK, let url = panel.url {
             loadManualCommandDefinitions(from: url)
@@ -275,6 +269,7 @@ final class EditorModel: ObservableObject {
                 scriptCommandDefinitionURL = nil
                 scriptCommandDefinitions = []
                 commandDefinitionDiagnostics = []
+                promptedCommandDefinitionURL = nil
                 refreshCommandNames()
                 validateNow()
             }
@@ -285,14 +280,24 @@ final class EditorModel: ObservableObject {
             return
         }
 
-        let result = CommandDefinitionFile.load(from: referencedURL)
+        let accessibleURL = SecurityScopedAccess.resolvedURL(
+            defaultsKey: commandDefinitionBookmarkKey(for: referencedURL)
+        ) ?? referencedURL
+        loadScriptCommandDefinitions(from: accessibleURL, referencedBy: referencedURL)
+    }
+
+    private func loadScriptCommandDefinitions(from accessibleURL: URL, referencedBy referencedURL: URL) {
+        let result = CommandDefinitionFile.load(from: accessibleURL)
         guard result.issues.isEmpty else {
             scriptCommandDefinitionURL = referencedURL
             scriptCommandDefinitions = []
-            commandDefinitionDiagnostics = diagnostics(for: result.issues, sourceURL: referencedURL)
+            commandDefinitionDiagnostics = diagnostics(for: result.issues, sourceURL: accessibleURL)
             refreshCommandNames()
             validateNow()
             statusMessage = String(format: String(localized: "Could not load %@"), referencedURL.lastPathComponent)
+            if result.sourceReadFailed {
+                requestAccessToCommandDefinitions(at: referencedURL)
+            }
             return
         }
 
@@ -304,8 +309,92 @@ final class EditorModel: ObservableObject {
         statusMessage = String(format: String(localized: "Loaded %@"), referencedURL.lastPathComponent)
     }
 
+    private func requestAccessToCommandDefinitions(at referencedURL: URL) {
+        guard commandDefinitionAccessPanel == nil,
+              promptedCommandDefinitionURL != referencedURL else {
+            return
+        }
+
+        promptedCommandDefinitionURL = referencedURL
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.commandDefinitionAccessPanel == nil,
+                  self.firstCommandDefinitionURL(in: self.text, relativeTo: self.currentFileURL) == referencedURL else {
+                return
+            }
+
+            let explanation = NSAlert()
+            explanation.alertStyle = .informational
+            explanation.messageText = String(localized: "Command Definitions Require Access")
+            explanation.informativeText = String(
+                format: String(localized: "The script references %@. Because the app runs in the macOS sandbox, select this file in the next dialog to allow the editor to load its command definitions. You can decline, but the definition file will not be loaded and commands defined in it may be incorrectly reported as errors."),
+                referencedURL.lastPathComponent
+            )
+            explanation.addButton(withTitle: String(localized: "Continue"))
+            explanation.addButton(withTitle: String(localized: "Don't Load"))
+
+            guard explanation.runModal() == .alertFirstButtonReturn,
+                  self.firstCommandDefinitionURL(in: self.text, relativeTo: self.currentFileURL) == referencedURL else {
+                return
+            }
+
+            let panel = self.makeCommandDefinitionOpenPanel()
+            panel.message = String(
+                format: String(localized: "The script references %@. Select this command definition file to load it."),
+                referencedURL.lastPathComponent
+            )
+            panel.directoryURL = referencedURL.deletingLastPathComponent()
+            panel.nameFieldStringValue = referencedURL.lastPathComponent
+            self.commandDefinitionAccessPanel = panel
+
+            panel.begin { [weak self, weak panel] response in
+                guard let self, let panel,
+                      self.commandDefinitionAccessPanel === panel else {
+                    return
+                }
+                self.commandDefinitionAccessPanel = nil
+
+                guard self.firstCommandDefinitionURL(in: self.text, relativeTo: self.currentFileURL) == referencedURL else {
+                    self.scriptCommandDefinitionURL = nil
+                    self.refreshScriptCommandDefinitions()
+                    return
+                }
+
+                guard response == .OK, let selectedURL = panel.url else {
+                    return
+                }
+
+                SecurityScopedAccess.storeBookmark(
+                    for: selectedURL,
+                    defaultsKey: self.commandDefinitionBookmarkKey(for: referencedURL)
+                )
+                self.loadScriptCommandDefinitions(from: selectedURL, referencedBy: referencedURL)
+            }
+        }
+    }
+
+    private func makeCommandDefinitionOpenPanel() -> NSOpenPanel {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: CommandDefinitionFile.filenameExtension) ?? .plainText
+        ]
+        panel.title = String(localized: "Open Command Definitions")
+        panel.prompt = String(localized: "Load")
+        return panel
+    }
+
+    private func commandDefinitionBookmarkKey(for referencedURL: URL) -> String {
+        let pathData = Data(referencedURL.standardizedFileURL.path.utf8)
+        return "commandDefinitionBookmark.\(pathData.base64EncodedString())"
+    }
+
     private func refreshCommandNames() {
         commandNames = DSLCommandSet.commandNames(extraDefinitions: activeCommandDefinitions)
+        valueFunctionNames = DSLCommandSet.valueFunctionNames(extraDefinitions: activeCommandDefinitions)
     }
 
     private var activeCommandDefinitions: [DSLCommandSet.CommandDefinition] {
@@ -314,30 +403,40 @@ final class EditorModel: ObservableObject {
 
     private func mergeCommandDefinitions(_ definitions: [DSLCommandSet.CommandDefinition]) -> [DSLCommandSet.CommandDefinition] {
         var order: [String] = []
-        var signaturesByName: [String: [[ArgType]]] = [:]
+        var signaturesByIdentity: [String: [[ArgType]]] = [:]
+        var metadataByIdentity: [String: (name: String, returnType: ArgType?)] = [:]
         var seenSignatures: Set<String> = []
 
         for definition in definitions {
-            if signaturesByName[definition.name] == nil {
-                order.append(definition.name)
-                signaturesByName[definition.name] = []
+            let returnTypeName = definition.returnType.map(typeName) ?? "command"
+            let identity = "\(definition.name)->\(returnTypeName)"
+
+            if signaturesByIdentity[identity] == nil {
+                order.append(identity)
+                signaturesByIdentity[identity] = []
+                metadataByIdentity[identity] = (definition.name, definition.returnType)
             }
 
             for signature in definition.signatures {
-                let key = "\(definition.name)(\(signature.map(typeName).joined(separator: ",")))"
+                let key = "\(identity)(\(signature.map(typeName).joined(separator: ",")))"
                 guard !seenSignatures.contains(key) else {
                     continue
                 }
                 seenSignatures.insert(key)
-                signaturesByName[definition.name]?.append(signature)
+                signaturesByIdentity[identity]?.append(signature)
             }
         }
 
-        return order.compactMap { name in
-            guard let signatures = signaturesByName[name] else {
+        return order.compactMap { identity in
+            guard let signatures = signaturesByIdentity[identity],
+                  let metadata = metadataByIdentity[identity] else {
                 return nil
             }
-            return DSLCommandSet.CommandDefinition(name: name, signatures: signatures)
+            return DSLCommandSet.CommandDefinition(
+                name: metadata.name,
+                signatures: signatures,
+                returnType: metadata.returnType
+            )
         }
     }
 
@@ -347,7 +446,8 @@ final class EditorModel: ObservableObject {
         }
 
         let reference = trimmedPathReference(rawReference)
-        guard !reference.isEmpty else {
+        guard !reference.isEmpty,
+              (reference as NSString).pathExtension.lowercased() == CommandDefinitionFile.filenameExtension else {
             return nil
         }
 
@@ -400,13 +500,7 @@ final class EditorModel: ObservableObject {
                 .appendingPathComponent(expandedReference)
         }
 
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: candidateURL.path, isDirectory: &isDirectory),
-              !isDirectory.boolValue else {
-            return nil
-        }
-
-        return candidateURL
+        return candidateURL.standardizedFileURL
     }
 
     private func diagnostics(for issues: [CommandDefinitionFile.ParseIssue], sourceURL: URL) -> [Diagnostic] {

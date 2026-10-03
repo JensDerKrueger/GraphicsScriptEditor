@@ -130,6 +130,7 @@ private extension ContentView {
             text: $model.text,
             diagnostics: model.diagnostics,
             commandNames: model.commandNames,
+            valueFunctionNames: model.valueFunctionNames,
             fontName: editorFontName,
             fontSize: CGFloat(editorFontSize),
             showsLineNumbers: showLineNumbers,

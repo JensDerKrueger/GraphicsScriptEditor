@@ -39,7 +39,7 @@ extension CommandResultCode: CustomStringConvertible {
     }
 }
 
-enum ArgType {
+enum ArgType: Hashable {
     case int
     case int64
     case uint32
@@ -68,6 +68,11 @@ final class CommandInterpreter {
     private struct CommandOverload {
         let signature: [ArgType]
         let callback: CommandCallback?
+    }
+
+    private struct ValueFunctionOverload {
+        let signature: [ArgType]
+        let returnType: ArgType
     }
 
     private enum InstructionKind {
@@ -99,6 +104,7 @@ final class CommandInterpreter {
     }
 
     private var commandMap: [String: [CommandOverload]] = [:]
+    private var valueFunctionMap: [String: [ValueFunctionOverload]] = [:]
     private var unknownCommandHandler: UnknownCommandCallback?
 
     private var instructions: [Instruction] = []
@@ -120,6 +126,15 @@ final class CommandInterpreter {
                          _ callback: CommandCallback? = nil) -> CommandResultCode {
         let overload = CommandOverload(signature: signature, callback: callback)
         commandMap[commandName, default: []].append(overload)
+        return .success
+    }
+
+    @discardableResult
+    func registerValueFunction(_ functionName: String,
+                               _ signature: [ArgType],
+                               returning returnType: ArgType) -> CommandResultCode {
+        let overload = ValueFunctionOverload(signature: signature, returnType: returnType)
+        valueFunctionMap[functionName, default: []].append(overload)
         return .success
     }
 
@@ -370,7 +385,13 @@ final class CommandInterpreter {
                 let name = args[0]
                 let rhs = Array(args.dropFirst())
 
-                if rhs.count == 1 {
+                if let functionResult = evaluateValueFunction(rhs[0], Array(rhs.dropFirst())) {
+                    guard functionResult.code == .success else {
+                        lastErrorLine = instruction.lineNumber
+                        return functionResult.code
+                    }
+                    setVariable(name, functionResult.value)
+                } else if rhs.count == 1 {
                     setVariable(name, rhs[0])
                 } else {
                     var value: Int64 = 0
@@ -458,6 +479,30 @@ final class CommandInterpreter {
         }
 
         return .invalidArguments
+    }
+
+    private func evaluateValueFunction(_ function: String,
+                                       _ args: [String]) -> (code: CommandResultCode, value: String)? {
+        guard let overloads = valueFunctionMap[function] else {
+            return nil
+        }
+
+        for overload in overloads where parseArgs(args, signature: overload.signature) != nil {
+            return (.success, placeholderValue(for: overload.returnType))
+        }
+
+        return (.invalidArguments, "")
+    }
+
+    private func placeholderValue(for type: ArgType) -> String {
+        switch type {
+        case .bool:
+            return "false"
+        case .int, .int64, .uint32, .float, .double:
+            return "0"
+        case .string, .restString:
+            return ""
+        }
     }
 
     private func parseArgs(_ args: [String], signature: [ArgType]) -> [CommandArg]? {
@@ -593,17 +638,13 @@ final class CommandInterpreter {
 
         for (idx, rawLine) in lines.enumerated() {
             let lineNumber = idx + 1
-            var line = rawLine
-
-            if let hashIndex = line.firstIndex(of: "#") {
-                line = String(line[..<hashIndex])
-            }
+            let strippedLine = stripComment(from: rawLine)
+            let line = strippedLine.code
 
             let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if trimmedLine.isEmpty {
-                let hadHash = rawLine.contains("#")
-                if !instructions.isEmpty && !lastWasSeparator && !hadHash {
+                if !instructions.isEmpty && !lastWasSeparator && !strippedLine.hadComment {
                     var sep = Instruction()
                     sep.kind = .separator
                     sep.lineNumber = lineNumber
@@ -613,7 +654,10 @@ final class CommandInterpreter {
                 continue
             }
 
-            let tokens = tokenize(trimmedLine)
+            guard let tokens = tokenize(trimmedLine) else {
+                lastErrorLine = lineNumber
+                return .invalidArguments
+            }
             if tokens.isEmpty { continue }
 
             var inst = Instruction()
@@ -662,6 +706,37 @@ final class CommandInterpreter {
         if rep != .success { return rep }
 
         return buildIfPairing()
+    }
+
+    private func stripComment(from line: String) -> (code: String, hadComment: Bool) {
+        var quote: Character?
+        var isEscaping = false
+
+        for index in line.indices {
+            let character = line[index]
+
+            if isEscaping {
+                isEscaping = false
+                continue
+            }
+
+            if let activeQuote = quote {
+                if character == "\\" {
+                    isEscaping = true
+                } else if character == activeQuote {
+                    quote = nil
+                }
+                continue
+            }
+
+            if character == "\"" || character == "'" {
+                quote = character
+            } else if character == "#" {
+                return (String(line[..<index]), true)
+            }
+        }
+
+        return (line, false)
     }
 
     private func buildRepeatPairing() -> CommandResultCode {
@@ -890,8 +965,57 @@ final class CommandInterpreter {
         return .success
     }
 
-    private func tokenize(_ line: String) -> [String] {
-        line.split { $0.isWhitespace }.map(String.init)
+    private func tokenize(_ line: String) -> [String]? {
+        var tokens: [String] = []
+        var token = ""
+        var tokenStarted = false
+        var quote: Character?
+        var isEscaping = false
+
+        func appendToken() {
+            guard tokenStarted else { return }
+            tokens.append(token)
+            token = ""
+            tokenStarted = false
+        }
+
+        for character in line {
+            if isEscaping {
+                token.append(character)
+                tokenStarted = true
+                isEscaping = false
+                continue
+            }
+
+            if let activeQuote = quote {
+                if character == "\\" {
+                    isEscaping = true
+                } else if character == activeQuote {
+                    quote = nil
+                } else {
+                    token.append(character)
+                }
+                tokenStarted = true
+                continue
+            }
+
+            if character == "\"" || character == "'" {
+                quote = character
+                tokenStarted = true
+            } else if character.isWhitespace {
+                appendToken()
+            } else {
+                token.append(character)
+                tokenStarted = true
+            }
+        }
+
+        guard quote == nil, !isEscaping else {
+            return nil
+        }
+
+        appendToken()
+        return tokens
     }
 
     private func parseIntStrict(_ s: String) -> Int64? {
