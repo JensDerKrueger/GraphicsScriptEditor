@@ -19,8 +19,6 @@
 		11111111111111111111111B /* SyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21111111111111111111111B /* SyntaxHighlighter.swift */; };
 		11111111111111111111111C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111121 /* Assets.xcassets */; };
 		11111111111111111111111D /* AppRuntimeIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111122 /* AppRuntimeIcon.png */; };
-		56E000012F80000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56E000052F80000000000001 /* Localizable.strings */; };
-		56E000072F80000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 56E000092F80000000000001 /* PrivacyInfo.xcprivacy */; };
 		121111111111111111111111 /* CommandInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111111 /* CommandInterpreter.swift */; };
 		121111111111111111111112 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111112 /* ContentView.swift */; };
 		121111111111111111111113 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111113 /* Diagnostics.swift */; };
@@ -33,12 +31,14 @@
 		12111111111111111111111B /* SyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21111111111111111111111B /* SyntaxHighlighter.swift */; };
 		12111111111111111111111C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111121 /* Assets.xcassets */; };
 		12111111111111111111111D /* AppRuntimeIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 211111111111111111111122 /* AppRuntimeIcon.png */; };
-		56E000022F80000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56E000052F80000000000001 /* Localizable.strings */; };
-		56E000082F80000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 56E000092F80000000000001 /* PrivacyInfo.xcprivacy */; };
 		564BE83A2F7BFB4C0019E369 /* GraphicsScriptDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564BE8392F7BFB4C0019E369 /* GraphicsScriptDocument.swift */; };
 		564BE83B2F7BFB4C0019E369 /* GraphicsScriptDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564BE8392F7BFB4C0019E369 /* GraphicsScriptDocument.swift */; };
 		56DA37EC2F742C1100C88928 /* SecurityScopedAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DA37EB2F742C1100C88928 /* SecurityScopedAccess.swift */; };
 		56DA37ED2F742C1100C88928 /* SecurityScopedAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56DA37EB2F742C1100C88928 /* SecurityScopedAccess.swift */; };
+		56E000012F80000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56E000052F80000000000001 /* Localizable.strings */; };
+		56E000022F80000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 56E000052F80000000000001 /* Localizable.strings */; };
+		56E000072F80000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 56E000092F80000000000001 /* PrivacyInfo.xcprivacy */; };
+		56E000082F80000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 56E000092F80000000000001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,13 +55,13 @@
 		21111111111111111111111C /* Graphics Script Editor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Graphics Script Editor.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		211111111111111111111121 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		211111111111111111111122 /* AppRuntimeIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppRuntimeIcon.png; sourceTree = "<group>"; };
+		22111111111111111111111C /* Graphics Script Editor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Graphics Script Editor.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		564BE8392F7BFB4C0019E369 /* GraphicsScriptDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsScriptDocument.swift; sourceTree = "<group>"; };
+		56DA37EB2F742C1100C88928 /* SecurityScopedAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccess.swift; sourceTree = "<group>"; };
 		56E000032F80000000000001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		56E000042F80000000000001 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
 		56E000062F80000000000001 /* GraphicsScriptEditor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GraphicsScriptEditor.entitlements; sourceTree = "<group>"; };
 		56E000092F80000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		22111111111111111111111C /* Graphics Script Editor Release.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Graphics Script Editor Release.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		564BE8392F7BFB4C0019E369 /* GraphicsScriptDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsScriptDocument.swift; sourceTree = "<group>"; };
-		56DA37EB2F742C1100C88928 /* SecurityScopedAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityScopedAccess.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,7 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				21111111111111111111111C /* Graphics Script Editor.app */,
-				22111111111111111111111C /* Graphics Script Editor Release.app */,
+				22111111111111111111111C /* Graphics Script Editor.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,18 +132,6 @@
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
-
-/* Begin PBXVariantGroup section */
-		56E000052F80000000000001 /* Localizable.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				56E000032F80000000000001 /* en */,
-				56E000042F80000000000001 /* de */,
-			);
-			name = Localizable.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin PBXNativeTarget section */
 		511111111111111111111111 /* Graphics Script Editor */ = {
@@ -177,7 +165,7 @@
 			);
 			name = "Graphics Script Editor Release";
 			productName = "Graphics Script Editor Release";
-			productReference = 22111111111111111111111C /* Graphics Script Editor Release.app */;
+			productReference = 22111111111111111111111C /* Graphics Script Editor.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -188,7 +176,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2710;
 				TargetAttributes = {
 					511111111111111111111111 = {
 						CreatedOnToolsVersion = 16.0;
@@ -284,11 +272,24 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXVariantGroup section */
+		56E000052F80000000000001 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				56E000032F80000000000001 /* en */,
+				56E000042F80000000000001 /* de */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		B11111111111111111111111 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
@@ -333,6 +334,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
@@ -354,6 +356,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -376,12 +379,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = L8Q6MVX7ZF;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GraphicsScriptEditor/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Graphics Script Editor";
@@ -393,7 +397,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -405,12 +409,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = L8Q6MVX7ZF;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GraphicsScriptEditor/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Graphics Script Editor";
@@ -422,7 +427,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -435,12 +440,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = NO;
@@ -454,7 +459,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor;
 				PRODUCT_NAME = "Graphics Script Editor";
@@ -469,12 +474,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = GraphicsScriptEditor/Resources/GraphicsScriptEditor.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = NO;
@@ -488,7 +493,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = de.cgvis.GraphicsScriptEditor;
 				PRODUCT_NAME = "Graphics Script Editor";
 				SDKROOT = macosx;
